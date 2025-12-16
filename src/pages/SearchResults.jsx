@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Container, Row, Col, Form } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../store/cartSlice";
+// import { addToCart } from "../store/cartSlice";
 import { addToWishlist, removeFromWishlist } from "../store/wishlistSlice";
 import BannerBreadcrumb from "../components/ui/BannerBreadcrumb";
 import { PurchaseNowButton } from "../components/ui/Buttons";
@@ -77,11 +77,13 @@ const SearchResults = () => {
   };
   
   const handleWishlistToggle = (product) => {
-    const isInWishlist = wishlistItems.some((item) => item.id === product.id);
+    const isInWishlist = wishlistItems.some(
+      (item) => Number(item.productId) === Number(product.id)
+    );
     if (isInWishlist) {
       dispatch(removeFromWishlist(product.id));
     } else {
-      dispatch(addToWishlist(product));
+      dispatch(addToWishlist({ product, variantIndex: 0 }));
     }
   };
   
@@ -144,7 +146,7 @@ const SearchResults = () => {
                         <div className="wishlist-wrapper">
                           <IconLink
                             iconType="wishlist"
-                            className={`wishlist-icon ${wishlistItems.some((item) => item.id === product.id) ? "filled" : ""}`}
+                            className={`wishlist-icon ${wishlistItems.some((item) => Number(item.productId) === Number(product.id)) ? "filled" : ""}`}
                             onClick={() => handleWishlistToggle(product)}
                           />
                         </div>

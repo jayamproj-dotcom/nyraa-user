@@ -11,6 +11,68 @@ const FeaturedCategories = () => {
   const [error, setError] = useState(null);
 
   // Fetch featured categories from API
+  // useEffect(() => {
+  //   const fetchCategories = async () => {
+  //     try {
+  //       setLoading(true);
+  //       setError(null);
+  //       let allProducts = [];
+  //       let page = 1;
+  //       let totalPages = 1;
+
+  //       while (page <= totalPages) {
+  //         const response = await fetch(`http://localhost:5000/api/products?page=${page}`);
+  //         if (!response.ok) {
+  //           throw new Error(`Failed to fetch products: ${response.statusText}`);
+  //         }
+  //         const data = await response.json();
+  //         if (!data.success) {
+  //           throw new Error(data.error || "API request failed");
+  //         }
+  //         const productArray = data.data?.products || [];
+  //         if (!Array.isArray(productArray)) {
+  //           throw new Error("Could not extract product array from API response");
+  //         }
+  //         allProducts = [...allProducts, ...productArray];
+  //         totalPages = data.data?.pagination?.totalPages || 1;
+  //         page++;
+  //       }
+
+  //       // Transform API data to match expected structure for FeaturedCategories
+  //       const transformedData = allProducts
+  //         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  //         .slice(0, 3)
+  //         .map((item, index) => {
+  //           const variants = Array.isArray(item.variants) ? item.variants : [];
+  //           const firstVariant = variants[0] || {};
+  //           const discountPrice = item.discount > 0 ? `From ₹${firstVariant.price || item.price || 0}` : null;
+  //           const categoryName = typeof item.category === 'object' ? item.category?.category || 'Uncategorized' : item.category || 'Uncategorized';
+  //           const categorySlug = typeof item.category === 'object' ? item.category?.cat_slug || generateSlug(categoryName) : generateSlug(categoryName);
+  //           const titleName = typeof item.name === 'string' ? item.name : 'Unnamed Product';
+  //           return {
+  //             largeImage: index === 0 ? item.image || item.images?.[0] || 'https://via.placeholder.com/740' : null,
+  //             mediumImage1: index === 1 ? item.image || item.images?.[0] || 'https://via.placeholder.com/740' : null,
+  //             mediumImage2: index === 2 ? item.image || item.images?.[0] || 'https://via.placeholder.com/740' : null,
+  //             subTitle: categoryName,
+  //             title: titleName,
+  //             link: categorySlug,
+  //             discountPrice,
+  //           };
+  //         });
+
+  //       setCategories(transformedData);
+  //       setLoading(false);
+  //     } catch (err) {
+  //       console.error("FeaturedCategories: Failed to load products:", err.message);
+  //       setError(err.message);
+  //       setCategories([]);
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchCategories();
+  // }, []);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -38,21 +100,32 @@ const FeaturedCategories = () => {
           page++;
         }
 
-        // Transform API data to match expected structure for FeaturedCategories
+        const BASE_URL = "http://localhost:5000"; // adjust for production
+
+        // Transform API data for FeaturedCategories with variant images
         const transformedData = allProducts
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
           .slice(0, 3)
           .map((item, index) => {
             const variants = Array.isArray(item.variants) ? item.variants : [];
             const firstVariant = variants[0] || {};
-            const discountPrice = item.discount > 0 ? `From ₹${firstVariant.price || item.price || 0}` : null;
+
+            // Use first variant image or fallback
+            const variantImage = firstVariant.images && firstVariant.images.length > 0
+              ? firstVariant.images[0].startsWith("http")
+                ? firstVariant.images[0]
+                : `${BASE_URL}/uploads/variants/${firstVariant.images[0]}`
+              : item.image || item.images?.[0] || 'https://via.placeholder.com/740';
+
             const categoryName = typeof item.category === 'object' ? item.category?.category || 'Uncategorized' : item.category || 'Uncategorized';
             const categorySlug = typeof item.category === 'object' ? item.category?.cat_slug || generateSlug(categoryName) : generateSlug(categoryName);
             const titleName = typeof item.name === 'string' ? item.name : 'Unnamed Product';
+            const discountPrice = item.discount > 0 ? `From ₹${firstVariant.price || item.price || 0}` : null;
+
             return {
-              largeImage: index === 0 ? item.image || item.images?.[0] || 'https://via.placeholder.com/740' : null,
-              mediumImage1: index === 1 ? item.image || item.images?.[0] || 'https://via.placeholder.com/740' : null,
-              mediumImage2: index === 2 ? item.image || item.images?.[0] || 'https://via.placeholder.com/740' : null,
+              largeImage: index === 0 ? variantImage : null,
+              mediumImage1: index === 1 ? variantImage : null,
+              mediumImage2: index === 2 ? variantImage : null,
               subTitle: categoryName,
               title: titleName,
               link: categorySlug,
@@ -72,6 +145,7 @@ const FeaturedCategories = () => {
 
     fetchCategories();
   }, []);
+
 
   const generateSlug = (name) => {
     return name

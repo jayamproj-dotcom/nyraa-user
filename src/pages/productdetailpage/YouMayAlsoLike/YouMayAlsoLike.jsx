@@ -59,11 +59,13 @@ const YouMayAlsoLike = ({ brand }) => {
 
   const handleWishlistToggle = (product, e) => {
     e.stopPropagation()
-    const isInWishlist = wishlistItems.some((item) => item.id === product.id)
+    const isInWishlist = wishlistItems.some(
+      (item) => Number(item.productId) === Number(product.id)
+    );
     if (isInWishlist) {
-      dispatch(removeFromWishlist(product.id))
+      dispatch(removeFromWishlist(product.id));
     } else {
-      dispatch(addToWishlist(product))
+      dispatch(addToWishlist({ product, variantIndex: 0 }));
     }
   }
 
@@ -147,7 +149,10 @@ const YouMayAlsoLike = ({ brand }) => {
                   <div className="wishlist-wrapper">
                     <IconLink
                       iconType="wishlist"
-                      className={`wishlist-icon ${wishlistItems.some((item) => item.id === product.id) ? "filled" : ""}`}
+                      className={`wishlist-icon ${wishlistItems.some((item) => Number(item.productId) === Number(product.id))
+                        ? "filled"
+                        : ""
+                        }`}
                       onClick={(e) => handleWishlistToggle(product, e)}
                     />
                   </div>

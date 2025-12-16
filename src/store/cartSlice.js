@@ -1,48 +1,128 @@
-import { createSlice } from "@reduxjs/toolkit"
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
+
+const API_BASE_URL = "http://localhost:5000";
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// ========================
+// Async thunks
+// ========================
+
+// Fetch cart from backend
+export const fetchCart = createAsyncThunk("cart/fetchCart", async () => {
+  const response = await api.get("/api/cart"); 
+  return response.data.items;
+});
+
+
+// Add item to backend cart
+export const addItemToCart = createAsyncThunk(
+  "cart/addItemToCart",
+  async (product) => {
+    const response = await api.post("/api/cart", product);
+    return response.data.item; // the added/updated item
+  }
+);
+
+// Update cart item quantity
+export const updateCartItem = createAsyncThunk(
+  "cart/updateCartItem",
+  async ({ id, quantity }) => {
+    const response = await api.put(`/api/cart/${id}`, { quantity });
+    return response.data.item;
+  }
+);
+
+// Remove item from cart
+export const removeCartItem = createAsyncThunk(
+  "cart/removeCartItem",
+  async (id) => {
+    await api.delete(`/api/cart/${id}`);
+    return id; // return deleted item's id
+  }
+);
+
+export const clearCart = createAsyncThunk(
+  "cart/clearCart",
+  async () => {
+    await api.delete("/api/cart/clear");
+    return true;
+  }
+);
+
+
 
 const cartSlice = createSlice({
   name: "cart",
   initialState: {
-    items: JSON.parse(localStorage.getItem("cart")) || [],
-    cartCount: JSON.parse(localStorage.getItem("cart"))?.reduce((total, item) => total + item.quantity, 0) || 0,
+    items: [],
+    cartCount: 0,
+    loading: false,
+    error: null,
   },
-  reducers: {
-    addToCart: (state, action) => {
-      const product = action.payload
-      const existingItem = state.items.find((item) => item.id === product.id)
-      if (existingItem) {
-        existingItem.quantity += product.quantity
-      } else {
-        state.items.push({ ...product, quantity: product.quantity })
-      }
-      state.cartCount += product.quantity
-      localStorage.setItem("cart", JSON.stringify(state.items))
-    },
-    updateQuantity: (state, action) => {
-      const { id, quantity } = action.payload
-      const item = state.items.find((item) => item.id === id)
-      if (item) {
-        state.cartCount += quantity - item.quantity
-        item.quantity = quantity
-        localStorage.setItem("cart", JSON.stringify(state.items))
-      }
-    },
-    removeFromCart: (state, action) => {
-      const id = action.payload
-      const item = state.items.find((item) => item.id === id)
-      if (item) {
-        state.cartCount -= item.quantity
-        state.items = state.items.filter((item) => item.id !== id)
-        localStorage.setItem("cart", JSON.stringify(state.items))
-      }
-    },
-    clearCart: (state) => {
-      state.items = []
-      state.cartCount = 0
-      localStorage.removeItem("cart")
-    },
-  },
-})
+  extraReducers: (builder) => {
+    builder
+      // Fetch cart
+      .addCase(fetchCart.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchCart.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = action.payload;
+        state.cartCount = action.payload.reduce(
+          (total, item) => total + item.quantity,
+          0
+        );
+      })
+      .addCase(fetchCart.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
 
-export const { addToCart, updateQuantity, removeFromCart, clearCart } = cartSlice.actions
-export default cartSlice.reducer
+      // Add item
+      .addCase(addItemToCart.fulfilled, (state, action) => {
+        const item = action.payload;
+        const existing = state.items.find((i) => i.id === item.id);
+        if (existing) {
+          existing.quantity = item.quantity;
+        } else {
+          state.items.push(item);
+        }
+        state.cartCount = state.items.reduce((total, i) => total + i.quantity, 0);
+      })
+
+      // Update item
+      .addCase(updateCartItem.fulfilled, (state, action) => {
+        const item = action.payload;
+        const existing = state.items.find((i) => i.id === item.id);
+        if (existing) existing.quantity = item.quantity;
+        state.cartCount = state.items.reduce((total, i) => total + i.quantity, 0);
+      })
+
+      // Remove item
+      .addCase(removeCartItem.fulfilled, (state, action) => {
+        const id = action.payload;
+        state.items = state.items.filter((i) => i.id !== id);
+        state.cartCount = state.items.reduce((total, i) => total + i.quantity, 0);
+      })
+
+      //Clear item
+      .addCase(clearCart.fulfilled, (state) => {
+        state.cartItems = [];  // empty array
+      });
+  },
+});
+
+// export const { clearCart } = cartSlice.actions;
+export default cartSlice.reducer;

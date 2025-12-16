@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import { Navbar as BootstrapNavbar, Nav, Button, Image, Offcanvas, Dropdown } from "react-bootstrap"
 import { useNavigate, useLocation, NavLink } from "react-router-dom"
-import { useSelector } from "react-redux"
+import { useSelector,useDispatch } from "react-redux"
+import { fetchWishlist } from "../../store/wishlistSlice"
+import { fetchCart } from "../../store/cartSlice"
+import { closeBuyNow } from "../../store/buyProductSlice"
 import IconLink from "../ui/Icons"
 import SearchSuggestions from "../Search/SearchSuggestions"
 import ConfirmationModal from "../ui/ConfirmationModal"
@@ -21,10 +24,12 @@ const Navbar = () => {
     actionType: "logout",
     title: "Confirm Logout",
   })
-  const [userData, setUserData] = useState({})
+  const [userData, setUserData] = useState({});
+  const dispatch = useDispatch();
 
-  const cartCount = useSelector((state) => state.cart.items.reduce((sum, item) => sum + item.quantity, 0))
-  const wishlistCount = useSelector((state) => state.wishlist.items.length)
+  const cartCount = useSelector((state) => state.cart.items.length);
+  const wishlistCount = useSelector((state) => state.wishlist.items.length);
+  
   const searchContainerRef = useRef(null)
   const searchInputRef = useRef(null)
 
@@ -99,6 +104,11 @@ const Navbar = () => {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+    useEffect(() => {
+      dispatch(fetchWishlist());
+      dispatch(fetchCart());
+    }, []);
 
   // Check if user profile is complete
   const isProfileComplete = () => {
@@ -605,12 +615,11 @@ const Navbar = () => {
 
             <div
               className="protected-nav-icon position-relative"
-              onClick={() => handleProtectedNavigation("/cart")}
+              onClick={() => {handleProtectedNavigation("/cart"),dispatch(closeBuyNow())}}
               role="button"
               aria-label="Shopping Cart"
             >
               <IconLink iconType="cart" badgeCount={cartCount} className="nav-icon" />
-        
             </div>
           </Nav>
         </div>

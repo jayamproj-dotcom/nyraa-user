@@ -27,7 +27,7 @@ const Wishlist = () => {
   }, [wishlistStatus, dispatch]);
 
   const handleViewDetails = (item) => {
-    navigate(`/product/${item.id}`, {
+    navigate(`/product/${item.productId}`, {
       state: { product: item },
     });
   };
@@ -43,9 +43,13 @@ const Wishlist = () => {
 
   const handleConfirmAction = async () => {
     const { itemToRemove, actionType } = modalConfig;
+
+    console.log("itemToRemove :" , itemToRemove);
+    
     
     if (actionType === 'removeWishlist' && itemToRemove) {
-      const result = await dispatch(removeFromWishlist(itemToRemove.id));
+      const result = await dispatch(removeFromWishlist(itemToRemove.productId));
+      dispatch(fetchWishlist());
       if (removeFromWishlist.fulfilled.match(result)) {
         toast.success("Item removed from wishlist successfully", {
           position: "top-right",
@@ -86,34 +90,46 @@ const Wishlist = () => {
         </div>
       ) : (
         <div className="wishlist-items">
-          {wishlistItems.map((item) => (
-            <div className="wishlist-item" key={item.id}>
-              <div className="item-image">
-                <img
-                  src={item.image || "https://via.placeholder.com/100"}
-                  alt={item.name}
-                />
-              </div>
-              <div className="item-details">
-                <h5>{item.name}</h5>
-                <p className="price">₹{item.price.toFixed(0)}</p>
-                <p className="product-id">Product ID: {item.id}</p>
-                {item.color && <p className="color">Color: {item.color}</p>}
-              </div>
-              <div className="item-actions">
-                <ViewDetailsButton
-                  label="View Details"
-                  productId={item.id}
-                  onClick={() => handleViewDetails(item)}
-                  className="me-2"
-                />
-                <RemoveWishlistButton
-                  productId={item.id}
-                  onClick={() => handleRemovePrompt(item)}
-                />
-              </div>
-            </div>
-          ))}
+            {wishlistItems.map((item) => {
+              // Determine which image to show: selected variant image or fallback
+              const variantImage =
+                item.variants && item.variants.length > 0
+                  ? Array.isArray(item.variants[0].images) && item.variants[0].images.length > 0
+                    ? item.variants[0].images[0] // first image of first variant
+                    : item.image
+                  : item.image;
+
+              return (
+                <div className="wishlist-item" key={item.id}>
+                  <div className="item-image">
+                    <img
+                      src={variantImage || "https://via.placeholder.com/100"}
+                      alt={item.name}
+                      onError={(e) => (e.target.src = "https://via.placeholder.com/100")}
+                    />
+                  </div>
+                  <div className="item-details">
+                    <h5>{item.name}</h5>
+                    <p className="price">₹{Number(item.price).toFixed(0)}</p>
+                    <p className="product-id">Product ID: {item.productId}</p>
+                    {item.color && <p className="color">Color: {item.color}</p>}
+                  </div>
+                  <div className="item-actions">
+                    <ViewDetailsButton
+                      label="View Details"
+                      productId={item.id}
+                      onClick={() => handleViewDetails(item)}
+                      className="me-2"
+                    />
+                    <RemoveWishlistButton
+                      productId={item.id}
+                      onClick={() => handleRemovePrompt(item)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
         </div>
       )}
 

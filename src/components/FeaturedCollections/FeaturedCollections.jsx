@@ -162,11 +162,13 @@ const FeaturedCollections = () => {
 
   const handleWishlistToggle = (product, e) => {
     e.stopPropagation()
-    const isInWishlist = wishlistItems.some((item) => item.id === product.id)
+    const isInWishlist = wishlistItems.some(
+      (item) => Number(item.productId) === Number(product.id)
+    );
     if (isInWishlist) {
-      dispatch(removeFromWishlist(product.id))
+      dispatch(removeFromWishlist(product.id));
     } else {
-      dispatch(addToWishlist(product))
+      dispatch(addToWishlist({ product, variantIndex: 0 }));
     }
   }
 
@@ -255,54 +257,67 @@ const FeaturedCollections = () => {
                 </button>
               </div>
             ) : (
-              products.map((product) => (
-                <div key={product.id} className="product-card" onClick={() => handleNavigation(product.id, product)}>
-                  <div
-                    className="product-image-container"
-                    onMouseEnter={() => handleImageHover(product.id)}
-                    onMouseLeave={handleImageLeave}
-                  >
-                    <img
-                      src={
-                        hoveredProductId === product.id && product.secondaryImage ? product.secondaryImage : product.image
-                      }
-                      alt={product.name}
-                      className="product-image"
-                      onError={(e) => {
-                        e.target.src = "/placeholder.svg"
-                      }}
-                    />
-                    <div className="wishlist-wrapper">
-                      <IconLink
-                        iconType="wishlist"
-                        className={`wishlist-icon ${wishlistItems.some((item) => item.id === product.id) ? "filled" : ""}`}
-                        onClick={(e) => handleWishlistToggle(product, e)}
-                      />
-                    </div>
-                  </div>
-                  <div className="product-info">
-                    <div className="product-info-content">
-                      <div className="content-wrapper">
-                        <div className="brand-name">{product.brand}</div>
-                        <h3 className="product-name">{product.name}</h3>
-                        <div className="price-container">
-                          {product.discount > 0 && (
-                            <span className="original-price">₹{product.originalPrice.toFixed(0)}</span>
-                          )}
-                          <span className="discounted-price">₹{product.price.toFixed(0)}</span>
-                          {product.discount > 0 && <span className="discount">-{product.discount}%</span>}
+                products.map((product) => {
+                  // Get the first variant's images
+                  const variantImages =
+                    product.variants &&
+                      product.variants.length > 0 &&
+                      Array.isArray(product.variants[0].images)
+                      ? product.variants[0].images
+                      : [];
+
+                  const mainImage = variantImages[0] || product.image || "/placeholder.svg";
+                  const hoverImage = variantImages[1] || product.secondaryImage || mainImage;
+
+                  return (
+                    <div key={product.id} className="product-card" onClick={() => handleNavigation(product.id, product)}>
+                      <div
+                        className="product-image-container"
+                        onMouseEnter={() => handleImageHover(product.id)}
+                        onMouseLeave={handleImageLeave}
+                      >
+                        <img
+                          src={hoveredProductId === product.id ? hoverImage : mainImage}
+                          alt={product.name}
+                          className="product-image"
+                          onError={(e) => (e.target.src = "/placeholder.svg")}
+                        />
+                        <div className="wishlist-wrapper">
+                          <IconLink
+                            iconType="wishlist"
+                            className={`wishlist-icon ${wishlistItems.some((item) => Number(item.productId) === Number(product.id))
+                              ? "filled"
+                              : ""
+                              }`}
+                            onClick={(e) => handleWishlistToggle(product, e)}
+                          />
                         </div>
                       </div>
+                      <div className="product-info">
+                        <div className="product-info-content">
+                          <div className="content-wrapper">
+                            <div className="brand-name">{product.brand}</div>
+                            <h3 className="product-name">{product.name}</h3>
+                            <div className="price-container">
+                              {product.discount > 0 && (
+                                <span className="original-price">₹{product.originalPrice.toFixed(0)}</span>
+                              )}
+                              <span className="discounted-price">₹{product.price.toFixed(0)}</span>
+                              {product.discount > 0 && <span className="discount">-{product.discount}%</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <BuyNowButton
+                          className="purchase-button"
+                          label="Shop Now"
+                          productId={product.slug}
+                          onClick={() => handleNavigation(product.id, product)}
+                        />
+                      </div>
                     </div>
-                    <BuyNowButton
-                      className="purchase-button"
-                      label="Shop Now"
-                      productId={product.slug}
-                      onClick={() => handleNavigation(product.id, product)}
-                    />
-                  </div>
-                </div>
-              ))
+                  );
+                })
+
             )}
           </div>
 

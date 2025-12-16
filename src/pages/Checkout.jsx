@@ -7,7 +7,8 @@ import { useSelector, useDispatch } from "react-redux"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import { createOrder, clearError } from "../store/orderSlice"
-import { clearCart } from "../store/cartSlice"
+import { clearCart, fetchCart } from "../store/cartSlice"
+import { clearBuyProduct, closeBuyNow } from "../store/buyProductSlice"
 import { fetchAddresses, createAddress, clearError as clearAddressError } from "../store/addressSlice"
 import { getUserData } from "../data/profileData"
 
@@ -15,13 +16,18 @@ const Checkout = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const location = useLocation()
-  const cartItems = useSelector((state) => state.cart.items)
+  const cartItems = useSelector((state) => state.cart.items);
+  const buyProduct = useSelector((state) => state.buyProduct.item);
+  const buyProductOpen = useSelector((state) => state.buyProduct.buyOpen)
   const { loading: orderLoading, error: orderError } = useSelector((state) => state.orders)
   const { addresses, loading: addressLoading, error: addressError } = useSelector((state) => state.addresses)
 
   // State for selected address
   const [selectedAddressId, setSelectedAddressId] = useState(null)
   const [showAddressModal, setShowAddressModal] = useState(false)
+
+  // console.log(buyItem);
+  
 
   // State for address form
   const [addressForm, setAddressForm] = useState({
@@ -275,12 +281,35 @@ const Checkout = () => {
     })
   }
 
+  
+
+  // const calculateOrderSummary = () => {
+  //   const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  //   const shipping = subtotal > 500 ? 0 : 50 // Free shipping over ₹500
+  //   const tax = subtotal * 0.08 // 8% tax
+  //   const discount = subtotal * orderDetails.couponDiscount
+  //   const total = subtotal + shipping + tax - discount
+
+  //   return {
+  //     subtotal: subtotal.toFixed(2),
+  //     shipping: shipping.toFixed(2),
+  //     tax: tax.toFixed(2),
+  //     discount: discount.toFixed(2),
+  //     total: total.toFixed(2),
+  //   }
+  // }
+
+
   const calculateOrderSummary = () => {
-    const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
-    const shipping = subtotal > 500 ? 0 : 50 // Free shipping over ₹500
-    const tax = subtotal * 0.08 // 8% tax
-    const discount = subtotal * orderDetails.couponDiscount
-    const total = subtotal + shipping + tax - discount
+    let subtotal = buyProductOpen
+      ? buyProduct.price * buyProduct.quantity
+      : cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+
+    const shipping = subtotal > 500 ? 0 : 50;
+    const tax = subtotal * 0.08;
+
+    const discount = subtotal * (orderDetails.couponDiscount || 0);
+    const total = subtotal + shipping + tax - discount;
 
     return {
       subtotal: subtotal.toFixed(2),
@@ -288,8 +317,16 @@ const Checkout = () => {
       tax: tax.toFixed(2),
       discount: discount.toFixed(2),
       total: total.toFixed(2),
-    }
-  }
+    };
+  };
+
+
+    useEffect(() => {
+        // dispatch(fetchWishlist());
+       
+      }, []);
+
+
 
   const validateOrder = () => {
     if (!isLoggedIn) {
@@ -297,10 +334,10 @@ const Checkout = () => {
       return false
     }
 
-    if (cartItems.length === 0) {
-      toast.error("Your cart is empty.")
-      return false
-    }
+    // if (cartItems.length === 0) {
+    //   toast.error("Your cart is empty.")
+    //   return false
+    // }
 
     if (!selectedAddressId) {
       toast.error("Please select or add a shipping address.")
@@ -325,32 +362,172 @@ const Checkout = () => {
     const selectedAddress = addresses.find((addr) => addr.id === selectedAddressId)
     const orderSummary = calculateOrderSummary()
 
+    // const orderData = {
+    //   items: cartItems.map((item) => ({
+    //     id: item.id,
+    //     name: item.name,
+    //     quantity: item.quantity,
+    //     price: item.price,
+    //     originalPrice: item.originalPrice || item.price,
+    //     image: item.image || "/placeholder.svg?height=100&width=100&text=Product",
+    //     color: item.color || null,
+    //     size: item.size || null,
+    //     carat: item.carat || null,
+    //   })),
+    //   subtotal: orderSummary.subtotal,
+    //   shipping: orderSummary.shipping,
+    //   tax: orderSummary.tax,
+    //   discount: orderSummary.discount,
+    //   total: orderSummary.total,
+    //   shippingAddress: selectedAddress,
+    //   specialInstructions: orderDetails.specialInstructions,
+    //   couponCode: orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
+    //   paymentMethod: orderDetails.paymentMethod,
+    // }
+
+    // const orderData = {
+    //   items: [
+    //     {
+    //       id: buyProduct.id,
+    //       name: buyProduct.name,
+    //       quantity: buyProduct.quantity,
+    //       price: buyProduct.price,
+    //       originalPrice: buyProduct.originalPrice || buyProduct.price,
+    //       image: buyProduct.image || "/placeholder.svg?height=100&width=100&text=Product",
+    //       color: buyProduct.color || null,
+    //       size: buyProduct.size || null,
+    //       carat: buyProduct.carat || null,
+    //     }
+    //   ],
+
+    //   subtotal: orderSummary.subtotal,
+    //   shipping: orderSummary.shipping,
+    //   tax: orderSummary.tax,
+    //   discount: orderSummary.discount,
+    //   total: orderSummary.total,
+
+    //   shippingAddress: selectedAddress,
+    //   specialInstructions: orderDetails.specialInstructions,
+
+    //   couponCode:
+    //     orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
+
+    //   paymentMethod: orderDetails.paymentMethod,
+    // }
+
+    // const orderData = {
+    //   items: buyProductOpen
+    //     ? [
+    //       {
+    //         id: buyProduct.id,
+    //         name: buyProduct.name,
+    //         quantity: buyProduct.quantity,
+    //         price: buyProduct.price,
+    //         originalPrice: buyProduct.originalPrice || buyProduct.price,
+    //         image:
+    //           buyProduct.image ||
+    //           "/placeholder.svg?height=100&width=100&text=Product",
+    //         color: buyProduct.color || null,
+    //         size: buyProduct.size || null,
+    //         carat: buyProduct.carat || null,
+    //       },
+    //     ]
+    //     : cartItems.map((item) => ({
+    //       id: item.id,
+    //       name: item.product.name,
+    //       quantity: item.quantity,
+    //       price: item.price,
+    //       originalPrice: item.originalPrice || item.price,
+    //       image: item.image || "/placeholder.svg?height=100&width=100&text=Product",
+    //       color: item.color || null,
+    //       size: item.size || null,
+    //       carat: item.carat || null,
+    //     })),
+
+    //   subtotal: orderSummary.subtotal,
+    //   shipping: orderSummary.shipping,
+    //   tax: orderSummary.tax,
+    //   discount: orderSummary.discount,
+    //   total: orderSummary.total,
+
+    //   shippingAddress: selectedAddress,
+    //   specialInstructions: orderDetails.specialInstructions,
+    //   couponCode:
+    //     orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
+    //   paymentMethod: orderDetails.paymentMethod,
+    // };
+
     const orderData = {
-      items: cartItems.map((item) => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        originalPrice: item.originalPrice || item.price,
-        image: item.image || "/placeholder.svg?height=100&width=100&text=Product",
-        color: item.color || null,
-        size: item.size || null,
-        carat: item.carat || null,
-      })),
+      items: buyProductOpen
+        ? [
+          {
+            id: buyProduct.id,
+            name: buyProduct.name,
+            quantity: buyProduct.quantity,
+            price: buyProduct.price,
+            originalPrice: buyProduct.originalPrice || buyProduct.price,
+            image:
+              buyProduct.image ||
+              "/placeholder.svg?height=100&width=100&text=Product",
+            color: buyProduct.color || null,
+            size: buyProduct.size || null,
+            carat: buyProduct.carat || null,
+          },
+        ]
+        : cartItems.map((item) => {
+          let productImage = null;
+
+          if (Array.isArray(item.product.images)) {
+            productImage = item.product.images[0];
+          } else if (typeof item.product.images === "string") {
+            try {
+              const parsed = JSON.parse(item.product.images);
+              if (Array.isArray(parsed)) {
+                productImage = parsed[0];
+              }
+            } catch (e) {
+              console.log("Image JSON parse error:", e);
+            }
+          }
+
+          return {
+            id: item.product.id,
+            name: item.product.name,
+            quantity: item.quantity,
+            price: item.price,
+            originalPrice: item.originalPrice || item.price,
+            image:
+              productImage ||
+              "/placeholder.svg?height=100&width=100&text=Product",
+            color: item.color || null,
+            size: item.size || null,
+            carat: item.carat || null,
+          };
+        }),
+
       subtotal: orderSummary.subtotal,
       shipping: orderSummary.shipping,
       tax: orderSummary.tax,
       discount: orderSummary.discount,
       total: orderSummary.total,
+
       shippingAddress: selectedAddress,
       specialInstructions: orderDetails.specialInstructions,
-      couponCode: orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
+      couponCode:
+        orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
       paymentMethod: orderDetails.paymentMethod,
-    }
+    };
+
 
     try {
       await dispatch(createOrder(orderData)).unwrap()
-      dispatch(clearCart())
+      if (buyProductOpen){
+        dispatch(clearBuyProduct())
+      }else{
+        dispatch(clearCart()); 
+      }    
+      dispatch(fetchCart());
+      dispatch(closeBuyNow())
 
       toast.success("Order placed successfully!", {
         position: "top-right",
@@ -370,6 +547,9 @@ const Checkout = () => {
   }
 
   const orderSummary = calculateOrderSummary()
+
+  console.log(buyProduct);
+  
 
   return (
     <div className="checkout-container">
@@ -526,36 +706,104 @@ const Checkout = () => {
                   <div className="checkout-section order-summary">
                     <h3>Order Summary</h3>
 
-                    {/* Cart Items */}
                     <div className="cart-items">
-                      {cartItems.length === 0 ? (
+
+                      {/* EMPTY STATE */}
+                      {!buyProductOpen && cartItems.length === 0 ? (
                         <div className="text-center py-4">
                           <i className="fas fa-shopping-cart fa-2x text-muted mb-3"></i>
                           <p className="text-muted">Your cart is empty</p>
                         </div>
                       ) : (
-                        cartItems.map((item) => (
-                          <div key={item.id} className="cart-item">
-                            <div className="item-image">
-                              <img
-                                src={item.image || "/placeholder.svg?height=60&width=60&text=Product"}
-                                alt={item.name}
-                              />
-                            </div>
-                            <div className="item-details">
-                              <h6 className="item-name">{item.name}</h6>
-                              <div className="item-variants">
-                                {item.color && <span>Color: {item.color}</span>}
-                                {item.size && <span>Size: {item.size}</span>}
-                                {item.carat && <span>Carat: {item.carat}</span>}
+                        <>
+                          {/* BUY NOW PRODUCT */}
+                            {buyProductOpen && buyProduct && (() => {
+                              let variantImage = null;
+
+                              try {
+                                const variants = Array.isArray(buyProduct.variants)
+                                  ? buyProduct.variants
+                                  : typeof buyProduct.variants === "string"
+                                    ? JSON.parse(buyProduct.variants)
+                                    : [];
+
+                                const matchedVariant = variants.find(
+                                  (v) => v.color === buyProduct.color && v.size === buyProduct.size
+                                );
+
+                                if (matchedVariant?.images?.length > 0) {
+                                  variantImage = matchedVariant.images[0];
+                                }
+                              } catch (err) {
+                                console.error("BuyNow variant image error:", err);
+                              }
+
+                              return (
+                                <div key={buyProduct.id} className="cart-item">
+                                  <div className="item-image">
+                                    <img
+                                      src={variantImage || "/placeholder.svg"}
+                                      alt={buyProduct.name}
+                                    />
+                                  </div>
+
+                                  <div className="item-details">
+                                    <h6 className="item-name">{buyProduct.name}</h6>
+
+                                    <div className="item-variants">
+                                      {buyProduct.color && <span>Color: {buyProduct.color}</span>}
+                                      {buyProduct.size && <span>Size: {buyProduct.size}</span>}
+                                      {buyProduct.carat && <span>Carat: {buyProduct.carat}</span>}
+                                    </div>
+
+                                    <div className="item-price">
+                                      ₹{buyProduct.price} × {buyProduct.quantity}
+                                    </div>
+                                  </div>
+
+                                  <div className="item-total">
+                                    ₹{(buyProduct.price * buyProduct.quantity).toFixed(2)}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+
+                          {/* CART ITEMS */}
+                          {!buyProductOpen &&
+                            cartItems.length > 0 &&
+                            cartItems.map((item) => (
+                              <div key={item.id} className="cart-item">
+                                <div className="item-image">
+                                  <img
+                                    src={
+                                      item.image ||
+                                      "/placeholder.svg?height=60&width=60&text=Product"
+                                    }
+                                    alt={item.name}
+                                  />
+                                </div>
+
+                                <div className="item-details">
+                                  <h6 className="item-name">{item.name}</h6>
+
+                                  <div className="item-variants">
+                                    {item.color && <span>Color: {item.color}</span>}
+                                    {item.size && <span>Size: {item.size}</span>}
+                                    {item.carat && <span>Carat: {item.carat}</span>}
+                                  </div>
+
+                                  <div className="item-price">
+                                    ₹{item.price} × {item.quantity}
+                                  </div>
+                                </div>
+
+                                <div className="item-total">
+                                  ₹{(item.price * item.quantity).toFixed(2)}
+                                </div>
                               </div>
-                              <div className="item-price">
-                                ₹{item.price.toFixed(2)} × {item.quantity}
-                              </div>
-                            </div>
-                            <div className="item-total">₹{(item.price * item.quantity).toFixed(2)}</div>
-                          </div>
-                        ))
+                            ))}
+                        </>
                       )}
                     </div>
 
@@ -618,14 +866,17 @@ const Checkout = () => {
                       </div>
                     </div>
 
-                    {/* Place Order Button */}
                     <Button
                       variant="primary"
                       size="lg"
                       className="place-order-btn"
                       onClick={handlePlaceOrder}
                       disabled={
-                        cartItems.length === 0 || orderLoading || isProcessing || !selectedAddressId || addressLoading
+                        (buyProductOpen ? !buyProduct : cartItems.length === 0) || // check based on buyProductOpen
+                        orderLoading ||
+                        isProcessing ||
+                        !selectedAddressId ||
+                        addressLoading
                       }
                     >
                       {orderLoading || isProcessing ? (
@@ -634,10 +885,9 @@ const Checkout = () => {
                           Processing...
                         </>
                       ) : (
-                        `Place Order - ₹${orderSummary.total}`
+                        `Place Order - ₹${orderSummary?.total || "0.00"}`
                       )}
                     </Button>
-
                   </div>
                 </div>
               </div>

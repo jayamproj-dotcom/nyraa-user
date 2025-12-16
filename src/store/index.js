@@ -3,6 +3,7 @@ import cartReducer from './cartSlice';
 import wishlistReducer from './wishlistSlice';
 import orderReducer from "./orderSlice"
 import addressReducer from "./addressSlice"
+import buyProductReducer from "./buyProductSlice"
 
 
 
@@ -10,8 +11,8 @@ export const store = configureStore({
   reducer: {
     cart: cartReducer,
     wishlist: wishlistReducer,
-     orders: orderReducer,
-     addresses: addressReducer,
-
+    orders: orderReducer,
+    addresses: addressReducer,
+    buyProduct: buyProductReducer,
   },
 });

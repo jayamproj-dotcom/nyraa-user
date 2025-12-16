@@ -353,35 +353,79 @@ const TrendingStyles = () => {
               </button>
             </div>
           ) : (
-            items.map((item) => (
-              <div key={item.id} className="trending-card" onClick={() => handleProductClick(item)}>
-                <div className="image-container">
-                  <img
-                    src={item.image || "/placeholder.svg"}
-                    alt={item.name}
-                    className="trending-image"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.src = "/placeholder.svg"
-                    }}
-                    draggable="false"
-                  />
-                  {item.discount > 0 && <span className="discount-badge">{item.discount}% OFF</span>}
-                  <IconLink
-                    iconType="heart"
-                    className={`heart-icon ${wishlistItems.some((wishlistItem) => wishlistItem.id === item.id) ? "filled" : ""}`}
-                    onClick={(e) => handleWishlistToggle(item, e)}
-                  />
-                  <div className="image-overlay">
-                    <h6 className="card-title">{item.name}</h6>
-                    <div className="card-price">
-                      {item.discount > 0 && <span className="original-price">₹{item.originalPrice.toFixed(0)}</span>}
-                      <span className="current-price">₹{item.price.toFixed(0)}</span>
+            // items.map((item) => (
+            //   <div key={item.id} className="trending-card" onClick={() => handleProductClick(item)}>
+            //     <div className="image-container">
+            //       <img
+            //         src={item.image || "/placeholder.svg"}
+            //         alt={item.name}
+            //         className="trending-image"
+            //         loading="lazy"
+            //         onError={(e) => {
+            //           e.target.src = "/placeholder.svg"
+            //         }}
+            //         draggable="false"
+            //       />
+            //       {item.discount > 0 && <span className="discount-badge">{item.discount}% OFF</span>}
+            //       <IconLink
+            //         iconType="heart"
+            //         className={`heart-icon ${wishlistItems.some((wishlistItem) => wishlistItem.id === item.id) ? "filled" : ""}`}
+            //         onClick={(e) => handleWishlistToggle(item, e)}
+            //       />
+            //       <div className="image-overlay">
+            //         <h6 className="card-title">{item.name}</h6>
+            //         <div className="card-price">
+            //           {item.discount > 0 && <span className="original-price">₹{item.originalPrice.toFixed(0)}</span>}
+            //           <span className="current-price">₹{item.price.toFixed(0)}</span>
+            //         </div>
+            //       </div>
+            //     </div>
+            //   </div>
+            // ))
+
+              items.map((item) => {
+                // Get the first variant's first image if available
+                const variantImage =
+                  item.variants &&
+                    item.variants.length > 0 &&
+                    item.variants[0].images &&
+                    item.variants[0].images.length > 0
+                    ? item.variants[0].images[0]
+                    : null;
+
+                return (
+                  <div key={item.id} className="trending-card" onClick={() => handleProductClick(item)}>
+                    <div className="image-container">
+                      <img
+                        src={variantImage || item.image || "/placeholder.svg"}
+                        alt={item.name}
+                        className="trending-image"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.src = "/placeholder.svg";
+                        }}
+                        draggable="false"
+                      />
+                      {item.discount > 0 && <span className="discount-badge">{item.discount}% OFF</span>}
+                      <IconLink
+                        iconType="heart"
+                        className={`wishlist-icon ${wishlistItems.some((item) => Number(item.productId) === Number(item.id))
+                          ? "filled"
+                          : ""
+                          }`}
+                        onClick={(e) => handleWishlistToggle(item, e)}
+                      />
+                      <div className="image-overlay">
+                        <h6 className="card-title">{item.name}</h6>
+                        <div className="card-price">
+                          {item.discount > 0 && <span className="original-price">₹{item.originalPrice.toFixed(0)}</span>}
+                          <span className="current-price">₹{item.price.toFixed(0)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))
+                );
+              })
           )}
         </div>
         <button

@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import IconLink from './Icons';
 import { FaShoppingBag } from 'react-icons/fa';
+import { useDispatch } from 'react-redux';
+import { closeBuyNow } from '../../store/buyProductSlice';
 
 const PromoNavButton = ({ label = "Shop Now", link, onClick, className, basePath = '' }) => {
   const navigate = useNavigate();
@@ -1074,12 +1076,14 @@ const QuantityButton = ({ action, onClick, className, disabled }) => {
 
 const CheckoutButton = ({ label = "Check Out", onClick, className, disabled }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleClick = () => {
     if (disabled) return;
     if (onClick) {
       onClick();
     } else {
+      dispatch(closeBuyNow)
       navigate('/checkout');
     }
   };

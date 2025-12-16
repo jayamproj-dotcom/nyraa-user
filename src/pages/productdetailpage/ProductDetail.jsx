@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../../store/cartSlice";
+// import { addToCart } from "../../store/cartSlice";
+import { addItemToCart } from "../../store/cartSlice";
+import { setBuyProduct, openBuyNow } from "../../store/buyProductSlice"
 import { addToWishlist, removeFromWishlist } from "../../store/wishlistSlice";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -45,73 +47,89 @@ const ProductDetail = () => {
   const thumbnailsContainerRef = useRef(null);
   const zoomLensRef = useRef(null);
   const zoomWindowRef = useRef(null);
+  const lensSize = 120;
   const zoomFactor = 2.5;
-  const lensSize = 200;
-
   const [filteredColors, setFilteredColors] = useState([]);
   const [selectedVariant, setSelectedVariant] = useState(null);
-
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`http://localhost:5000/api/products/${slug}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch product: ${response.statusText}`);
-        }
+
+        const BASE_URL = "http://localhost:5000"; // adjust for production
+
+
+        const response = await fetch(`${BASE_URL}/api/products/${slug}`);
+        if (!response.ok) throw new Error(`Failed to fetch product: ${response.statusText}`);
+
         const data = await response.json();
-        if (!data.success || !data.data) {
-          throw new Error(data.error || "API request failed");
-        }
+        if (!data.success || !data.data) throw new Error(data.error || "API request failed");
+
         const item = data.data;
-
         const variants = Array.isArray(item.variants) ? item.variants : [];
-
-        console.log(variants);
-        
         const firstVariant = variants[0] || {};
-        const specifications = Array.isArray(item.specifications) && item.specifications.length > 0 
-          ? item.specifications[0] 
+        const specifications = Array.isArray(item.specifications) && item.specifications.length > 0
+          ? item.specifications[0]
           : {};
+
+        // Normalize variant images
+        const normalizedVariants = variants.map((variant) => ({
+          ...variant,
+          images: Array.isArray(variant.images)
+            ? variant.images.map((img) => (img.startsWith("http") ? img : `${BASE_URL}/uploads/variants/${img}`))
+            : [],
+        }));
 
         const transformedProduct = {
           id: item.id?.toString() || item.slug,
           slug: item.slug || generateSlug(item.name),
           name: item.name || "Unnamed Product",
+
           price: firstVariant.price || item.price || 0,
           originalPrice: firstVariant.originalPrice || item.originalPrice || firstVariant.price || 0,
           discount: item.discount || 0,
-          category: typeof item.category === 'string' ? item.category : 
-                    (typeof item.categoryName === 'string' ? item.categoryName : "Uncategorized"),
+
+          category: typeof item.category === "string"
+            ? item.category
+            : typeof item.categoryName === "string"
+              ? item.categoryName
+              : "Uncategorized",
           categorySlug: item.cat_slug || generateSlug(item.categoryName || item.category || "uncategorized"),
-          size: variants
-            .map((v) => v.size)
-            .filter(Boolean)
-            .join(", ") || item.specifications?.Size || "N/A",
-          style: item.style || specifications.Detail || "N/A",
-          material: item.material || specifications.Fabric || "N/A",
+
+          size: normalizedVariants.map(v => v.size).filter(Boolean).join(", ") || "N/A",
+          // style: item.style || specifications.Detail || "N/A",
+          material: item.material || "N/A",
           brand: item.brand || "N/A",
-          color: variants
-            .map((v) => v.color)
-            .filter(Boolean)
-            .join(", ") || specifications.Color || "N/A",
-          images: item.images && Array.isArray(item.images) ? item.images : [item.image || "/placeholder.svg"],
-          highResImages: item.highResImages && Array.isArray(item.highResImages) ? item.highResImages : (item.images || [item.image || "/placeholder.svg"]),
-          image: item.image || (item.images && item.images[0]) || "/placeholder.svg", // Added to ensure cart compatibility
+          color: normalizedVariants.map(v => v.color).filter(Boolean).join(", ") || "N/A",
+
+          images: item.images && Array.isArray(item.images)
+            ? item.images
+            : [item.image || "/placeholder.svg"],
+          highResImages: item.highResImages && Array.isArray(item.highResImages)
+            ? item.highResImages
+            : item.images || [item.image || "/placeholder.svg"],
+          image: item.image || (item.images && item.images[0]) || "/placeholder.svg",
+
           availability: item.availability || "In Stock",
           description: item.description || "No description available",
-          about: item.seoDescription || "No additional information available",
+          // about: item.seoDescription || "No additional information available",
+          about: item.description || "No additional information available",
           rating: parseFloat(item.rating) || 0,
-          specifications: specifications,
-          variants,
+          specifications,
+          variants: normalizedVariants, // ✅ variants with full image URLs
         };
+
         setProduct(transformedProduct);
-        setSelectedColor(transformedProduct.color.split(", ")[0] || null);
-        setSelectedSize(transformedProduct.size.split(", ")[0] || null);
+
         const defaultSize = transformedProduct.size.split(", ")[0];
+        const defaultColor = transformedProduct.color.split(", ")[0];
+
+        setSelectedSize(defaultSize);
+        setSelectedColor(defaultColor);
         setFilteredColors(getColorsForSelectedSize(defaultSize, transformedProduct.variants));
+
         setLoading(false);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -124,9 +142,11 @@ const ProductDetail = () => {
         });
       }
     };
+
     fetchProduct();
     window.scrollTo(0, 0);
   }, [slug]);
+
 
   useEffect(() => {
     if (thumbnailsContainerRef.current) {
@@ -145,6 +165,30 @@ const ProductDetail = () => {
     }
   }, [activeImageIndex]);
 
+  useEffect(() => {
+    if (!product) return;
+
+    const defaultSize = product.size.split(", ")[0];
+    const defaultColor = product.color.split(", ")[0];
+
+    setSelectedSize(defaultSize);
+    setSelectedColor(defaultColor);
+
+    updateSelectedVariant(defaultSize, defaultColor); // ⭐ MUST CALL HERE
+  }, [product]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [selectedVariant]);
+
+
+  console.log({
+    naturalWidth: mainImageRef.current?.naturalWidth,
+    naturalHeight: mainImageRef.current?.naturalHeight
+  });
+
+
+
   const getColorsForSelectedSize = (size, variants) => {
     if (!size || !Array.isArray(variants)) return [];
 
@@ -155,30 +199,95 @@ const ProductDetail = () => {
     return [...new Set(colors)];
   };
 
+  // const updateSelectedVariant = (size, color) => {
+  
+  //   if (!product || !product.variants) return;
+
+  //   const variant = product.variants.find(
+  //     (v) => v.size === size && v.color === color
+  //   );
+
+  //   setSelectedVariant(variant || null);
+  // };
+
+  // const handleAddToCart = () => {
+  //   dispatch(addToCart({ ...product, quantity, color: selectedColor, size: selectedSize }));
+  //   toast.success("Item added to cart successfully", {
+  //     position: "top-right",
+  //     autoClose: 3000,
+  //     hideProgressBar: false,
+  //     closeOnClick: true,
+  //     pauseOnHover: true,
+  //     draggable: true,
+  //   });
+  // };
+  
   const updateSelectedVariant = (size, color) => {
     if (!product || !product.variants) return;
-
-    const variant = product.variants.find(
-      (v) => v.size === size && v.color === color
-    );
-
+    const variant = product.variants.find(v => v.size === size && v.color === color);
     setSelectedVariant(variant || null);
+    setActiveImageIndex(0); // always start zoom from first image
   };
 
   const handleAddToCart = () => {
-    dispatch(addToCart({ ...product, quantity, color: selectedColor, size: selectedSize }));
-    toast.success("Item added to cart successfully", {
-      position: "top-right",
-      autoClose: 3000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
+
+    // Prepare payload to send to backend
+    const addCartItem = {
+      productId: product.id,      // Product ID from your product object
+      quantity: quantity,          // Quantity selected
+      size: selectedSize,          // Selected size
+      color: selectedColor,        // Selected color
+      price: selectedVariant.price,        // Optional: pass price
+    };
+
+    // Dispatch the async thunk to add item to backend cart
+    dispatch(addItemToCart(addCartItem))
+      .unwrap() // allows error handling
+      .then(() => {
+        toast.success("Item added to cart successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      })
+      .catch((err) => {
+        toast.error("Failed to add item to cart: " + err.message, {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      });
   };
 
   const handleBuyNow = () => {
-    dispatch(addToCart({ ...product, quantity, color: selectedColor, size: selectedSize }));
+
+    console.log("selectedVariant :" + selectedVariant);
+    
+    if (!selectedVariant) {
+      toast.error("Please select a color and size");
+      return;
+    }
+
+    // dispatch(
+    //   addToCart({
+    //     ...product,
+    //     price: Number(selectedVariant.price), // Keep price as number
+    //     quantity,
+    //     color: selectedColor,
+    //     size: selectedSize,
+    //   })
+    // );
+
+    dispatch(
+      setBuyProduct({
+        ...product,
+        price: Number(selectedVariant.price), // Keep price as number
+        quantity,
+        color: selectedColor,
+        size: selectedSize,
+      })
+    );
+
+    dispatch(openBuyNow());
+
     toast.success("Item added to cart successfully", {
       position: "top-right",
       autoClose: 3000,
@@ -187,64 +296,80 @@ const ProductDetail = () => {
       pauseOnHover: true,
       draggable: true,
     });
+
     navigate("/checkout");
   };
+
 
   const handleThumbnailClick = (index) => {
     setActiveImageIndex(index);
   };
 
-  const handleMouseMove = (e) => {
-    if (!mainImageRef.current || !zoomLensRef.current || !zoomWindowRef.current) return;
+ // Add this state for image dimensions
+const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
-    const rect = mainImageRef.current.getBoundingClientRect();
-    const imageUrl = product.highResImages?.[activeImageIndex] || product.images?.[activeImageIndex];
+// Add this effect to track image dimensions
+useEffect(() => {
+  if (mainImageRef.current && selectedVariant?.images?.[activeImageIndex]) {
+    const img = new Image();
+    img.src = selectedVariant.images[activeImageIndex];
+    img.onload = () => {
+      setImageDimensions({
+        width: img.naturalWidth,
+        height: img.naturalHeight
+      });
+    };
+  }
+}, [selectedVariant, activeImageIndex]);
 
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+// Replace the handleMouseMove function with this improved version
+const handleMouseMove = (e) => {
+  if (!mainImageRef.current || !zoomLensRef.current || !zoomWindowRef.current) return;
+  
+  const img = mainImageRef.current;
+  const rect = img.getBoundingClientRect();
+  const imageUrl = selectedVariant?.images?.[activeImageIndex] || product.image;
 
-    const boundedX = Math.max(lensSize / 2, Math.min(x, rect.width - lensSize / 2));
-    const boundedY = Math.max(lensSize / 2, Math.min(y, rect.height - lensSize / 2));
+  // Calculate cursor position relative to image
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
 
-    const lensLeft = boundedX - lensSize / 2;
-    const lensTop = boundedY - lensSize / 2;
+  // Calculate boundaries for lens
+  const lensHalf = lensSize / 2;
+  
+  // Make sure lens stays within image bounds
+  const boundedX = Math.max(lensHalf, Math.min(x, rect.width - lensHalf));
+  const boundedY = Math.max(lensHalf, Math.min(y, rect.height - lensHalf));
 
-    zoomLensRef.current.style.left = `${lensLeft}px`;
-    zoomLensRef.current.style.top = `${lensTop}px`;
+  // Position the lens
+  zoomLensRef.current.style.left = `${boundedX - lensHalf}px`;
+  zoomLensRef.current.style.top = `${boundedY - lensHalf}px`;
 
-    const bgWidth = rect.width * zoomFactor;
-    const bgHeight = rect.height * zoomFactor;
+  // Calculate zoom window dimensions
+  const displayedWidth = img.offsetWidth;
+  const displayedHeight = img.offsetHeight;
+  
+  // Get the natural image dimensions
+  const naturalWidth = imageDimensions.width || img.naturalWidth;
+  const naturalHeight = imageDimensions.height || img.naturalHeight;
 
-    const ratioX = boundedX / rect.width;
-    const ratioY = boundedY / rect.height;
+  // Calculate zoom ratios
+  const zoomWidth = naturalWidth / displayedWidth;
+  const zoomHeight = naturalHeight / displayedHeight;
 
-    const zoomWindowWidth = zoomWindowRef.current.offsetWidth;
-    const zoomWindowHeight = zoomWindowRef.current.offsetHeight;
+  // Calculate background position for zoom window
+  const bgX = ((boundedX / displayedWidth) * naturalWidth * zoomFactor);
+  const bgY = ((boundedY / displayedHeight) * naturalHeight * zoomFactor);
 
-    const bgPosX = -(ratioX * bgWidth - zoomWindowWidth / 2);
-    const bgPosY = -(ratioY * bgHeight - zoomWindowHeight / 2);
-
-    zoomWindowRef.current.style.backgroundImage = `url(${imageUrl})`;
-    zoomWindowRef.current.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
-    zoomWindowRef.current.style.backgroundPosition = `${bgPosX}px ${bgPosY}px`;
-
-    zoomLensRef.current.style.backgroundImage = `url(${imageUrl})`;
-    zoomLensRef.current.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
-    zoomLensRef.current.style.backgroundPosition = `${-lensLeft * zoomFactor}px ${-lensTop * zoomFactor}px`;
-  };
+  // Apply zoom to window
+  zoomWindowRef.current.style.backgroundImage = `url(${imageUrl})`;
+  zoomWindowRef.current.style.backgroundSize = `${naturalWidth * zoomFactor}px ${naturalHeight * zoomFactor}px`;
+  zoomWindowRef.current.style.backgroundPosition = `-${bgX - (lensSize * zoomFactor / 2)}px -${bgY - (lensSize * zoomFactor / 2)}px`;
+};
 
   const handleThumbnailHover = (index) => {
     setActiveImageIndex(index);
   };
-
-  // const handleColorChange = (color) => {
-  //   setSelectedColor(color);
-  // };
-
-  // const handleSizeChange = (size) => {
-  //   setSelectedSize(size);
-  // };
-
   const handleColorChange = (color) => {
     setSelectedColor(color);
     updateSelectedVariant(selectedSize, color);
@@ -261,7 +386,6 @@ const ProductDetail = () => {
     // Auto pick first color
     const newColor = colors[0] || "";
     setSelectedColor(newColor);
-
     // Update variant for price
     updateSelectedVariant(size, newColor);
   };
@@ -273,11 +397,13 @@ const ProductDetail = () => {
   };
 
   const handleWishlistToggle = () => {
-    const isInWishlist = wishlistItems.some((item) => item.id === product.id);
+    const isInWishlist = wishlistItems.some(
+      (item) => Number(item.productId) === Number(product.id)
+    );
     if (isInWishlist) {
       dispatch(removeFromWishlist(product.id));
     } else {
-      dispatch(addToWishlist(product));
+      dispatch(addToWishlist({ product, variantIndex: 0 }));
     }
   };
 
@@ -345,37 +471,23 @@ const ProductDetail = () => {
             <div className="col-md-6">
               <div className="product-images-container">
                 <div className="thumbnails-container d-none d-md-flex" ref={thumbnailsContainerRef}>
-                  {product.images?.map((img, index) => (
+                  {selectedVariant?.images?.map((img, index) => (
                     <div
                       key={index}
                       className={`thumbnail-item ${activeImageIndex === index ? "active" : ""}`}
-                      onClick={() => handleThumbnailClick(index)}
-                      onMouseEnter={() => handleThumbnailMouseEnter(index)}
-                      onMouseLeave={handleThumbnailMouseLeave}
+                      onClick={() => setActiveImageIndex(index)}
+                      onMouseEnter={() => setActiveImageIndex(index)}
                     >
                       <img
-                        src={img || "/placeholder.svg"}
-                        alt={`${product.name} - view ${index + 1}`}
+                        src={img}
+                        alt={`${product.name} ${index + 1}`}
                         className="thumbnail-image"
-                        onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/80x120?text=Image+Not+Found";
-                        }}
+                        onError={(e) => (e.target.src = "/placeholder.svg")}
                       />
-                      {hoverIndex === index && (
-                        <IconLink
-                          iconType="wishlist"
-                          className={`thumbnail-heart-icon ${
-                            wishlistItems.some((item) => item.id === product.id) ? "filled" : ""
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleWishlistToggle();
-                          }}
-                        />
-                      )}
                     </div>
                   ))}
                 </div>
+
                 <div
                   className="main-image-container"
                   onMouseMove={handleMouseMove}
@@ -384,11 +496,18 @@ const ProductDetail = () => {
                 >
                   <img
                     ref={mainImageRef}
-                    src={product.images?.[activeImageIndex] || product.image}
+                    src={selectedVariant?.images?.[activeImageIndex] || product.image || "/placeholder.svg"}
                     className="img-fluid product-images"
                     alt={product.name}
                     onError={(e) => (e.target.src = "/placeholder.svg")}
+                    onLoad={(e) => {
+                      setImageDimensions({
+                        width: e.target.naturalWidth,
+                        height: e.target.naturalHeight
+                      });
+                    }}
                   />
+
                   {isZoomed && (
                     <>
                       <div className="zoom-lens" ref={zoomLensRef}></div>
@@ -396,10 +515,12 @@ const ProductDetail = () => {
                     </>
                   )}
                 </div>
+
               </div>
+
               <div className="mobile-thumbnails-container d-md-none">
                 <div className="mobile-thumbnails-scroll">
-                  {product.images?.map((img, index) => (
+                  {selectedVariant?.images?.map((img, index) => (
                     <div
                       key={index}
                       className={`mobile-thumbnail ${activeImageIndex === index ? "active" : ""}`}
@@ -412,20 +533,14 @@ const ProductDetail = () => {
                         src={img || "/placeholder.svg"}
                         alt={`${product.name} - view ${index + 1}`}
                         className="thumbnail-image"
-                        onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/60x90?text=Image+Not+Found";
-                        }}
+                        onError={(e) => { e.target.src = "https://via.placeholder.com/60x90?text=Image+Not+Found"; }}
                       />
                       {hoverIndex === index && (
                         <IconLink
                           iconType="wishlist"
-                          className={`mobile-thumbnail-heart-icon ${
-                            wishlistItems.some((item) => item.id === product.id) ? "filled" : ""
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleWishlistToggle();
-                          }}
+                          className={`mobile-thumbnail-heart-icon ${wishlistItems.some((item) => Number(item.productId) === Number(product.id)) ? "filled" : ""
+                            }`}
+                          onClick={(e) => { e.stopPropagation(); handleWishlistToggle(); }}
                         />
                       )}
                     </div>
@@ -537,7 +652,7 @@ const ProductDetail = () => {
                     <IconLink
                       iconType="wishlist"
                       className={`heart-icon-quantity ${
-                        wishlistItems.some((item) => item.id === product.id) ? "filled" : ""
+                        wishlistItems.some((item) => Number(item.productId) === Number(product.id)) ? "filled" : ""
                       }`}
                       onClick={handleWishlistToggle}
                     />

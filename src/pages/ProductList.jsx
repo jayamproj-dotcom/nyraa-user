@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Spinner } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../store/cartSlice";
+// import { addToCart } from "../store/cartSlice";
 import { addToWishlist, removeFromWishlist } from "../store/wishlistSlice";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -54,81 +54,178 @@ const ProductList = () => {
   const [hoveredProductId, setHoveredProductId] = useState(null);
 
   // Fetch products from the API
+//   useEffect(() => {
+//    const fetchProducts = async () => {
+//   try {
+//     setLoading(true);
+//     setError(null);
+//     let allProducts = [];
+//     let page = 1;
+//     let totalPages = 1;
+
+//     while (page <= totalPages) {
+//       const response = await fetch(`http://localhost:5000/api/products?page=${page}`);
+//       if (!response.ok) {
+//         throw new Error(`Failed to fetch products: ${response.statusText}`);
+//       }
+//       const data = await response.json();
+//       if (!data.success) {
+//         throw new Error(data.error || "API request failed");
+//       }
+//       const productArray = data.data?.products || [];
+//       if (!Array.isArray(productArray)) {
+//         throw new Error("Could not extract product array from API response");
+//       }
+//       allProducts = [...allProducts, ...productArray];
+//       totalPages = data.data?.pagination?.totalPages || 1;
+//       page++;
+//     }
+
+//     const transformedData = allProducts.map((item) => {
+//       const variants = Array.isArray(item.variants) ? item.variants : [];
+//       const firstVariant = variants[0] || {};
+//       return {
+//         id: item.id?.toString(),
+//         slug: item.slug || generateSlug(item.name), // Add slug
+//         name: item.name || "Unnamed Product",
+//         price: firstVariant.price || item.price || 0,
+//         originalPrice: firstVariant.originalPrice || item.originalPrice || firstVariant.price || 0,
+//         discount: item.discount || 0,
+//         category: item.category || "Uncategorized",
+//         categorySlug: item.cat_slug || generateSlug(item.category || "uncategorized"), // Add category slug
+//         size: variants
+//           .map((v) => v.size)
+//           .filter(Boolean)
+//           .join(", ") || item.specifications?.Size || "N/A",
+//         style: item.style || item.specifications?.Detail || "N/A",
+//         material: item.material || item.specifications?.Fabric || "N/A",
+//         brand: item.brand || "N/A",
+//         color: variants
+//           .map((v) => v.color)
+//           .filter(Boolean)
+//           .join(", ") || item.specifications?.Color || "N/A",
+//         image: item.image || item.images?.[0] || "/placeholder.svg",
+//         secondaryImage: item.images?.[1] || "",
+//         availability: item.availability || "N/A",
+//         description: item.description || "No description available",
+//         rating: parseFloat(item.rating) || 0,
+//         variants,
+//       };
+//     });
+//     setProducts(transformedData);
+//     setLoading(false);
+//   } catch (err) {
+//     console.error("Fetch error:", err);
+//     setError(err.message);
+//     setProducts([]);
+//     setLoading(false);
+//     toast.error(`Failed to load products: ${err.message}`, {
+//       position: "top-right",
+//       autoClose: 3000,
+//     });
+//   }
+// };
+
+//     fetchProducts();
+//     window.scrollTo(0, 0);
+//   }, []);
+
+
   useEffect(() => {
-   const fetchProducts = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    let allProducts = [];
-    let page = 1;
-    let totalPages = 1;
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-    while (page <= totalPages) {
-      const response = await fetch(`http://localhost:5000/api/products?page=${page}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch products: ${response.statusText}`);
-      }
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || "API request failed");
-      }
-      const productArray = data.data?.products || [];
-      if (!Array.isArray(productArray)) {
-        throw new Error("Could not extract product array from API response");
-      }
-      allProducts = [...allProducts, ...productArray];
-      totalPages = data.data?.pagination?.totalPages || 1;
-      page++;
-    }
+        let allProducts = [];
+        let page = 1;
+        let totalPages = 1;
+        const BASE_URL = "http://localhost:5000"; // adjust for production if needed
 
-    const transformedData = allProducts.map((item) => {
-      const variants = Array.isArray(item.variants) ? item.variants : [];
-      const firstVariant = variants[0] || {};
-      return {
-        id: item.id?.toString(),
-        slug: item.slug || generateSlug(item.name), // Add slug
-        name: item.name || "Unnamed Product",
-        price: firstVariant.price || item.price || 0,
-        originalPrice: firstVariant.originalPrice || item.originalPrice || firstVariant.price || 0,
-        discount: item.discount || 0,
-        category: item.category || "Uncategorized",
-        categorySlug: item.cat_slug || generateSlug(item.category || "uncategorized"), // Add category slug
-        size: variants
-          .map((v) => v.size)
-          .filter(Boolean)
-          .join(", ") || item.specifications?.Size || "N/A",
-        style: item.style || item.specifications?.Detail || "N/A",
-        material: item.material || item.specifications?.Fabric || "N/A",
-        brand: item.brand || "N/A",
-        color: variants
-          .map((v) => v.color)
-          .filter(Boolean)
-          .join(", ") || item.specifications?.Color || "N/A",
-        image: item.image || item.images?.[0] || "/placeholder.svg",
-        secondaryImage: item.images?.[1] || "",
-        availability: item.availability || "N/A",
-        description: item.description || "No description available",
-        rating: parseFloat(item.rating) || 0,
-        variants,
-      };
-    });
-    setProducts(transformedData);
-    setLoading(false);
-  } catch (err) {
-    console.error("Fetch error:", err);
-    setError(err.message);
-    setProducts([]);
-    setLoading(false);
-    toast.error(`Failed to load products: ${err.message}`, {
-      position: "top-right",
-      autoClose: 3000,
-    });
-  }
-};
+        // Fetch all pages
+        while (page <= totalPages) {
+          const response = await fetch(`${BASE_URL}/api/products?page=${page}`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch products: ${response.statusText}`);
+          }
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || "API request failed");
+          }
+          const productArray = data.data?.products || [];
+          if (!Array.isArray(productArray)) {
+            throw new Error("Could not extract product array from API response");
+          }
+          allProducts = [...allProducts, ...productArray];
+          totalPages = data.data?.pagination?.totalPages || 1;
+          page++;
+        }
+
+        // Transform data with normalized variant images
+        const transformedData = allProducts.map((item) => {
+          const variants = Array.isArray(item.variants) ? item.variants : [];
+          const firstVariant = variants[0] || {};
+
+          // Normalize variant images
+          const normalizedVariants = variants.map((variant) => ({
+            ...variant,
+            images: Array.isArray(variant.images)
+              ? variant.images.map((img) =>
+                img.startsWith("http") ? img : `${BASE_URL}/uploads/variants/${img}`
+              )
+              : [],
+          }));
+
+          const size = normalizedVariants.map(v => v.size).filter(Boolean).join(", ") || item.specifications?.Size || "N/A";
+          const color = normalizedVariants.map(v => v.color).filter(Boolean).join(", ") || item.specifications?.Color || "N/A";
+
+          return {
+            id: item.id?.toString() || "",
+            slug: item.slug || (item.name ? generateSlug(item.name) : ""),
+            name: item.name || "Unnamed Product",
+
+            price: firstVariant.price ?? item.price ?? 0,
+            originalPrice: firstVariant.originalPrice ?? item.originalPrice ?? firstVariant.price ?? 0,
+            discount: item.discount ?? 0,
+
+            category: item.category || "Uncategorized",
+            categorySlug: item.cat_slug || generateSlug(item.category || "uncategorized"),
+
+            size,
+            style: item.style || item.specifications?.Detail || "N/A",
+            material: item.material || item.specifications?.Fabric || "N/A",
+            brand: item.brand || "N/A",
+            color,
+
+            image: item.image || item.images?.[0] || "/placeholder.svg",
+            secondaryImage: item.images?.[1] || "",
+
+            availability: item.availability || "N/A",
+            description: item.description || "No description available",
+            rating: parseFloat(item.rating) || 0,
+
+            variants: normalizedVariants, // ✅ variants with full image URLs
+          };
+        });
+
+        setProducts(transformedData);
+        setLoading(false);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError(err.message);
+        setProducts([]);
+        setLoading(false);
+        toast.error(`Failed to load products: ${err.message}`, {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    };
 
     fetchProducts();
     window.scrollTo(0, 0);
   }, []);
+
 
   // Compute filter options
   const filterOptions = useMemo(() => {
@@ -307,15 +404,26 @@ const ProductList = () => {
 
   const handleWishlistToggle = useCallback(
     (product) => {
-      const isInWishlist = wishlistItems.some((item) => item.id === product.id);
+      const isInWishlist = wishlistItems.some(
+        (item) => Number(item.productId) === Number(product.id)
+      );
+
+      console.log("product :", product);
+      console.log("wishlistItems :", wishlistItems);
+      console.log("isInWishlist :", isInWishlist);
+
       if (isInWishlist) {
         dispatch(removeFromWishlist(product.id));
       } else {
-        dispatch(addToWishlist(product));
+        dispatch(addToWishlist({ product, variantIndex: 0 }));
       }
     },
-    [dispatch, wishlistItems],
+    [dispatch, wishlistItems]
   );
+
+
+  console.log("wishlistItems :" , wishlistItems);
+  
 
   const handleImageHover = (productId) => {
     setHoveredProductId(productId);
@@ -423,7 +531,7 @@ const ProductList = () => {
                   <h5>No products found</h5>
                 </div>
               )}
-              <div className="row row-cols-1 row-cols-sm-2 row-cols-md-4 row-cols-lg-4 g-4">
+              {/* <div className="row row-cols-1 row-cols-sm-2 row-cols-md-4 row-cols-lg-4 g-4">
                 {filteredProducts.map((product) => (
                   <div key={product.id} className="col">
                     <div className="product-card h-100">
@@ -470,6 +578,62 @@ const ProductList = () => {
                         <PurchaseNowButton
                           label="Buy Now"
                           productId={product.slug} // Use slug instead of id
+                          onClick={() => handleShopNow(product)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div> */}
+
+              <div className="row row-cols-1 row-cols-sm-2 row-cols-md-4 row-cols-lg-4 g-4">
+                {filteredProducts.map((product) => (
+                  <div key={product.id} className="col">
+                    <div className="product-card h-100">
+                      <div
+                        className="product-image-container"
+                        onMouseEnter={() => handleImageHover(product.id)}
+                        onMouseLeave={handleImageLeave}
+                      >
+                        <img
+                          src={
+                            hoveredProductId === product.id
+                              ? product.variants?.[0]?.images?.[1] || product.variants?.[0]?.images?.[0] || product.secondaryImage || product.image
+                              : product.variants?.[0]?.images?.[0] || product.image
+                          }
+                          alt={product.name}
+                          className="product-image"
+                          onClick={() => handleProductClick(product)}
+                          onError={(e) => (e.target.src = "/placeholder.svg")}
+                        />
+                        <div className="wishlist-wrapper">
+                          <IconLink
+                            iconType="wishlist"
+                            className={`wishlist-icon ${wishlistItems.some((item) => Number(item.productId) === Number(product.id))
+                                ? "filled"
+                                : ""
+                              }`}
+                            onClick={() => handleWishlistToggle(product)}
+                          />
+                        </div>
+                      </div>
+                      <div className="product-info">
+                        <div className="product-info-content">
+                          <div className="content-wrapper">
+                            <div className="brand-name">{product.brand}</div>
+                            <h3 className="product-name">{product.name}</h3>
+                            <div className="price-container">
+                              {product.discount > 0 && (
+                                <span className="original-price">₹{product.originalPrice.toFixed(0)}</span>
+                              )}
+                              <span className="discounted-price">₹{product.price.toFixed(0)}</span>
+                              {product.discount > 0 && <span className="discount">-{product.discount}%</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <PurchaseNowButton
+                          label="Buy Now"
+                          productId={product.slug}
                           onClick={() => handleShopNow(product)}
                         />
                       </div>

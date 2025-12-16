@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { updateQuantity, removeFromCart } from "../store/cartSlice";
+import { fetchCart, updateCartItem, removeCartItem } from "../store/cartSlice";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { RemoveWishlistButton, QuantityButton, CheckoutButton } from "../components/ui/Buttons";
@@ -25,8 +25,13 @@ const Cart = () => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
+  useEffect(() => {
+    dispatch(fetchCart());
+  }, []); // only once on page load
+
+
   const updateQuantityHandler = (id, newQuantity) => {
-    dispatch(updateQuantity({ id, quantity: Math.max(1, newQuantity) }));
+    dispatch(updateCartItem({ id, quantity: Math.max(1, newQuantity) }));
   };
 
   const handleRemovePrompt = (item) => {
@@ -42,7 +47,7 @@ const Cart = () => {
     const { itemToRemove, actionType } = modalConfig;
     
     if (actionType === 'remove' && itemToRemove) {
-      dispatch(removeFromCart(itemToRemove.id));
+      dispatch(removeCartItem(itemToRemove.id));
       toast.success("Item removed from cart successfully", {
         position: "top-right",
         autoClose: 3000,
@@ -64,6 +69,9 @@ const Cart = () => {
     return cartItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2);
   };
 
+  console.log(cartItems);
+  
+
   return (
     <div className="cart-wrapper mx-3 mx-md-3 mx-0-mobile">
       <h1 className="page-title">Your Cart</h1>
@@ -75,58 +83,109 @@ const Cart = () => {
           <div className="col-3 col-md-3 text-center">Quantity</div>
           <div className="col-2 col-md-3 text-end">Total</div>
         </div>
+
         {cartItems.length === 0 ? (
           <p className="text-center mt-4">Your cart is empty.</p>
         ) : (
-          cartItems.map((item) => (
-            <div key={item.id} className="row cart-item align-items-center py-2">
-              <div className="col-7 col-md-6 d-flex align-items-center">
-                <img
-                  src={item.image || "https://via.placeholder.com/60"}
-                  alt={item.name}
-                  className="cart-item-image"
-                />
-                <div className="product-details">
-                  <h5 className="mb-1 text-uppercase">{item.name}</h5>
-                  <p className="mb-1">₹{item.price.toFixed(2)}</p>
-                  <p className="mb-0">
-                    {item.color && `Color: ${item.color} | `}
-                    {item.carat && `Carat: ${item.carat}`}
-                  </p>
+          cartItems.map((item) => {
+            // ✅ HARD GUARD
+            if (!item.product) return null;
+
+            // ⭐ FIX VARIANT IMAGE
+            let productImage = null;
+
+            try {
+              const variants =
+                typeof item.product.variants === "string"
+                  ? JSON.parse(item.product.variants)
+                  : item.product.variants || [];
+
+              // ✅ find correct variant by color + size
+              const matchedVariantIndex = variants.findIndex(
+                (v) => v.color === item.color && v.size === item.size
+              );
+
+              if (matchedVariantIndex !== -1) {
+                const matchedVariant = variants[matchedVariantIndex];
+
+                if (Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0) {
+                  productImage = `http://localhost:5000/${matchedVariant.images[0]}`;
+                }
+              }
+            } catch (error) {
+              console.error("Variant image error:", error);
+            }
+
+            // 🔁 fallback if variant image not found
+            if (!productImage && item.product.image) {
+              productImage = `http://localhost:5000/${item.product.image}`;
+            }
+
+
+            // // fallback to product image
+            // if (!productImage && item.product.image) {
+            //   productImage = `http://localhost:5000/${item.product.image}`;
+            // }
+
+            return (
+              <div key={item.id} className="row cart-item align-items-center py-2">
+
+                {/* Product column */}
+                <div className="col-7 col-md-6 d-flex align-items-center">
+                  <img
+                    src={productImage || "https://via.placeholder.com/60"}
+                    alt={item.product.name}
+                    className="cart-item-image"
+                  />
+
+                  <div className="product-details">
+                    <h5 className="mb-1 text-uppercase">{item.product.name}</h5>
+                    <p className="mb-1">₹{item.price}</p>
+                    <p className="mb-0">
+                      {item.color && `Color: ${item.color} | `}
+                      {item.size && `Size: ${item.size}`}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="col-3 col-md-3 text-center">
-                <div className="quantity-controls">
-                  <QuantityButton
-                    action="decrement"
-                    onClick={() => updateQuantityHandler(item.id, item.quantity - 1)}
-                    className="quantity-btn"
-                  />
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    min="1"
-                    onChange={(e) => updateQuantityHandler(item.id, parseInt(e.target.value) || 1)}
-                    className="quantity-input"
-                  />
-                  <QuantityButton
-                    action="increment"
-                    onClick={() => updateQuantityHandler(item.id, item.quantity + 1)}
-                    className="quantity-btn"
-                  />
-                  <RemoveWishlistButton
-                    productId={item.id}
-                    onClick={() => handleRemovePrompt(item)}
-                  />
+
+                {/* Quantity column */}
+                <div className="col-3 col-md-3 text-center">
+                  <div className="quantity-controls">
+                    <QuantityButton
+                      action="decrement"
+                      onClick={() => updateQuantityHandler(item.id, item.quantity - 1)}
+                      className="quantity-btn"
+                    />
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      min="1"
+                      onChange={(e) => updateQuantityHandler(item.id, parseInt(e.target.value) || 1)}
+                      className="quantity-input"
+                    />
+                    <QuantityButton
+                      action="increment"
+                      onClick={() => updateQuantityHandler(item.id, item.quantity + 1)}
+                      className="quantity-btn"
+                    />
+                    <RemoveWishlistButton
+                      productId={item.id}
+                      onClick={() => handleRemovePrompt(item)}
+                    />
+                  </div>
                 </div>
+
+                {/* Total column */}
+                <div className="col-2 col-md-3 text-end">
+                  <p className="mb-0 text-nowrap">₹{(item.price * item.quantity).toFixed(2)}</p>
+                </div>
+
               </div>
-              <div className="col-2 col-md-3 text-end">
-                <p className="mb-0 text-nowrap">₹{(item.price * item.quantity).toFixed(2)}</p>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+
       
       {/* Mobile view */}
       <div className="mobile-view">
@@ -139,56 +198,75 @@ const Cart = () => {
         {cartItems.length === 0 ? (
           <p className="text-center mt-4">Your cart is empty.</p>
         ) : (
-          cartItems.map((item) => (
-            <div key={item.id} className="mobile-cart-item">
-              <div className="product-image-container">
-                <img
-                  src={item.image || "https://via.placeholder.com/60"}
-                  alt={item.name}
-                  className="mobile-cart-item-image"
-                />
-              </div>
-              
-              <div className="product-details">
-                <div className="product-name">{item.name}</div>
-                <div className="product-price">₹{item.price.toFixed(2)}</div>
-                
-                <div className="product-attributes">
-                  {item.color && <div>Color: {item.color}</div>}
-                  {item.carat && <div>Carat: {item.carat}</div>}
-                </div>
-                
-                <div className="quantity-controls-mobile">
-                  <QuantityButton
-                    action="decrement"
-                    onClick={() => updateQuantityHandler(item.id, item.quantity - 1)}
-                    className="quantity-btn"
-                  />
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    min="1"
-                    onChange={(e) => updateQuantityHandler(item.id, parseInt(e.target.value) || 1)}
-                    className="quantity-input"
-                  />
-                  <QuantityButton
-                    action="increment"
-                    onClick={() => updateQuantityHandler(item.id, item.quantity + 1)}
-                    className="quantity-btn"
-                  />
-                  <RemoveWishlistButton
-                    productId={item.id}
-                    onClick={() => handleRemovePrompt(item)}
+          cartItems.map((item) => {
+            // ⭐ FIX IMAGE HERE
+            let productImage = null;
+
+            try {
+              const imgArray = JSON.parse(item.product.images); // Parse the string → array
+              productImage = imgArray[0]; // First image
+            } catch (e) {
+              productImage = null;
+            }
+
+            return (
+              <div key={item.id} className="mobile-cart-item">
+
+                <div className="product-image-container">
+                  <img
+                    src={productImage || "https://via.placeholder.com/60"}
+                    alt={item.product.name}
+                    className="mobile-cart-item-image"
                   />
                 </div>
+
+                <div className="product-details">
+                  <div className="product-name">{item.product.name}</div>
+                  <div className="product-price">₹{item.price}</div>
+
+                  <div className="product-attributes">
+                    {item.color && <div>Color: {item.color}</div>}
+                    {item.size && <div>Size: {item.size}</div>}
+                  </div>
+
+                  <div className="quantity-controls-mobile">
+                    <QuantityButton
+                      action="decrement"
+                      onClick={() => updateQuantityHandler(item.id, item.quantity - 1)}
+                      className="quantity-btn"
+                    />
+
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      min="1"
+                      onChange={(e) =>
+                        updateQuantityHandler(item.id, parseInt(e.target.value) || 1)
+                      }
+                      className="quantity-input"
+                    />
+
+                    <QuantityButton
+                      action="increment"
+                      onClick={() => updateQuantityHandler(item.id, item.quantity + 1)}
+                      className="quantity-btn"
+                    />
+
+                    <RemoveWishlistButton
+                      productId={item.id}
+                      onClick={() => handleRemovePrompt(item)}
+                    />
+                  </div>
+                </div>
+
+                <div className="product-total">
+                  ₹{(item.price * item.quantity).toFixed(2)}
+                </div>
               </div>
-              
-              <div className="product-total">
-                ₹{(item.price * item.quantity).toFixed(2)}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
+
       </div>
       
       <div className="cart-footer">

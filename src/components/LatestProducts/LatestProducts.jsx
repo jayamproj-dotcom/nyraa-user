@@ -134,11 +134,13 @@ const LatestProducts = () => {
 
   const handleWishlistToggle = (product, e) => {
     e.stopPropagation()
-    const isInWishlist = wishlistItems.some((item) => item.id === product.id)
+    const isInWishlist = wishlistItems.some(
+      (item) => Number(item.productId) === Number(product.id)
+    );
     if (isInWishlist) {
-      dispatch(removeFromWishlist(product.id))
+      dispatch(removeFromWishlist(product.id));
     } else {
-      dispatch(addToWishlist(product))
+      dispatch(addToWishlist({ product, variantIndex: 0 }));
     }
   }
 
@@ -214,7 +216,7 @@ const LatestProducts = () => {
             <IconLink iconType="left-arrow" isArrow />
           </button>
 
-          <div className="scroll-container" ref={containerRef}>
+          {/* <div className="scroll-container" ref={containerRef}>
             {products.map((product) => (
               <div key={product.id} className="product-card">
                 <div
@@ -264,6 +266,72 @@ const LatestProducts = () => {
                 </div>
               </div>
             ))}
+          </div> */}
+
+          <div className="scroll-container" ref={containerRef}>
+            {products.map((product) => {
+              // Use first variant's first image if it exists
+              const firstVariantImage =
+                product.variants &&
+                  product.variants.length > 0 &&
+                  product.variants[0].images &&
+                  product.variants[0].images.length > 0
+                  ? product.variants[0].images[0] // full URL should already be normalized
+                  : null;
+
+              return (
+                <div key={product.id} className="product-card">
+                  <div
+                    className="product-image-container"
+                    onMouseEnter={() => handleImageHover(product.id)}
+                    onMouseLeave={handleImageLeave}
+                    onClick={() => handleNavigation(product.id, product)}
+                  >
+                    <img
+                      src={
+                        hoveredProductId === product.id
+                          ? firstVariantImage || product.secondaryImage || product.image
+                          : firstVariantImage || product.image
+                      }
+                      alt={product.name}
+                      className="product-image"
+                      onError={(e) => {
+                        e.target.src = "/placeholder.svg";
+                      }}
+                    />
+                    <div className="wishlist-wrapper">
+                      <IconLink
+                        iconType="wishlist"
+                        className={`wishlist-icon ${wishlistItems.some((item) => Number(item.productId) === Number(product.id)) ? "filled" : ""
+                          }`}
+                        onClick={(e) => handleWishlistToggle(product, e)}
+                      />
+                    </div>
+                  </div>
+                  <div className="product-info">
+                    <div className="product-info-content">
+                      <div className="content-wrapper">
+                        <div className="brand-name">{product.brand}</div>
+                        <h3 className="product-name">{product.name}</h3>
+                        <div className="price-container">
+                          {product.discount > 0 && (
+                            <span className="original-price">₹{product.originalPrice.toFixed(0)}</span>
+                          )}
+                          <span className="discounted-price">₹{product.price.toFixed(0)}</span>
+                          {product.discount > 0 && <span className="discount">-{product.discount}%</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <BuyNowButton
+                      className="product-list-button"
+                      label="Shop Now"
+                      productId={product.slug} // Use slug instead of id
+                      onClick={() => handleNavigation(product.id, product)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <button

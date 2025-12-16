@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ViewCartButton, PurchaseNowTwoButton, RemoveWishlistButton } from '../ui/Buttons';
-import { updateQuantity, removeFromCart } from '../../store/cartSlice';
+// import { updateQuantity, removeFromCart } from '../../store/cartSlice';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import './CartSidebar.css';
 
@@ -105,7 +105,7 @@ const CartSidebar = ({
                     />
                     <div>
                       <h6 className="mb-1">{item.name}</h6>
-                      <p className="mb-1">₹{item.price.toFixed(2)}</p>
+                      <p className="mb-1">₹{item.price}</p>
                       <div className="d-flex align-items-center">
                         <button
                           className="btn btn-outline-secondary btn-sm"
