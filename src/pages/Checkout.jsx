@@ -281,25 +281,6 @@ const Checkout = () => {
     })
   }
 
-  
-
-  // const calculateOrderSummary = () => {
-  //   const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
-  //   const shipping = subtotal > 500 ? 0 : 50 // Free shipping over ₹500
-  //   const tax = subtotal * 0.08 // 8% tax
-  //   const discount = subtotal * orderDetails.couponDiscount
-  //   const total = subtotal + shipping + tax - discount
-
-  //   return {
-  //     subtotal: subtotal.toFixed(2),
-  //     shipping: shipping.toFixed(2),
-  //     tax: tax.toFixed(2),
-  //     discount: discount.toFixed(2),
-  //     total: total.toFixed(2),
-  //   }
-  // }
-
-
   const calculateOrderSummary = () => {
     let subtotal = buyProductOpen
       ? buyProduct.price * buyProduct.quantity
@@ -353,6 +334,36 @@ const Checkout = () => {
     return true
   }
 
+  const getVariantImageFromProduct = (product, color, size) => {
+    try {
+      if (!product) return null;
+
+      const variants =
+        typeof product.variants === "string"
+          ? JSON.parse(product.variants)
+          : product.variants || [];
+
+      const matchedVariant = variants.find(
+        (v) => v.color === color && v.size === size
+      );
+
+      if (!matchedVariant?.images?.length) return null;
+
+      const image =
+        Array.isArray(matchedVariant.images)
+          ? matchedVariant.images[0]
+          : typeof matchedVariant.images === "string"
+            ? JSON.parse(matchedVariant.images)[0]
+            : null;
+
+      return image ? `${image}` : null;
+    } catch (err) {
+      console.error("Variant image error:", err);
+      return null;
+    }
+  };
+
+
   const handlePlaceOrder = async () => {
     if (!validateOrder()) {
       return
@@ -361,101 +372,6 @@ const Checkout = () => {
     setIsProcessing(true)
     const selectedAddress = addresses.find((addr) => addr.id === selectedAddressId)
     const orderSummary = calculateOrderSummary()
-
-    // const orderData = {
-    //   items: cartItems.map((item) => ({
-    //     id: item.id,
-    //     name: item.name,
-    //     quantity: item.quantity,
-    //     price: item.price,
-    //     originalPrice: item.originalPrice || item.price,
-    //     image: item.image || "/placeholder.svg?height=100&width=100&text=Product",
-    //     color: item.color || null,
-    //     size: item.size || null,
-    //     carat: item.carat || null,
-    //   })),
-    //   subtotal: orderSummary.subtotal,
-    //   shipping: orderSummary.shipping,
-    //   tax: orderSummary.tax,
-    //   discount: orderSummary.discount,
-    //   total: orderSummary.total,
-    //   shippingAddress: selectedAddress,
-    //   specialInstructions: orderDetails.specialInstructions,
-    //   couponCode: orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
-    //   paymentMethod: orderDetails.paymentMethod,
-    // }
-
-    // const orderData = {
-    //   items: [
-    //     {
-    //       id: buyProduct.id,
-    //       name: buyProduct.name,
-    //       quantity: buyProduct.quantity,
-    //       price: buyProduct.price,
-    //       originalPrice: buyProduct.originalPrice || buyProduct.price,
-    //       image: buyProduct.image || "/placeholder.svg?height=100&width=100&text=Product",
-    //       color: buyProduct.color || null,
-    //       size: buyProduct.size || null,
-    //       carat: buyProduct.carat || null,
-    //     }
-    //   ],
-
-    //   subtotal: orderSummary.subtotal,
-    //   shipping: orderSummary.shipping,
-    //   tax: orderSummary.tax,
-    //   discount: orderSummary.discount,
-    //   total: orderSummary.total,
-
-    //   shippingAddress: selectedAddress,
-    //   specialInstructions: orderDetails.specialInstructions,
-
-    //   couponCode:
-    //     orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
-
-    //   paymentMethod: orderDetails.paymentMethod,
-    // }
-
-    // const orderData = {
-    //   items: buyProductOpen
-    //     ? [
-    //       {
-    //         id: buyProduct.id,
-    //         name: buyProduct.name,
-    //         quantity: buyProduct.quantity,
-    //         price: buyProduct.price,
-    //         originalPrice: buyProduct.originalPrice || buyProduct.price,
-    //         image:
-    //           buyProduct.image ||
-    //           "/placeholder.svg?height=100&width=100&text=Product",
-    //         color: buyProduct.color || null,
-    //         size: buyProduct.size || null,
-    //         carat: buyProduct.carat || null,
-    //       },
-    //     ]
-    //     : cartItems.map((item) => ({
-    //       id: item.id,
-    //       name: item.product.name,
-    //       quantity: item.quantity,
-    //       price: item.price,
-    //       originalPrice: item.originalPrice || item.price,
-    //       image: item.image || "/placeholder.svg?height=100&width=100&text=Product",
-    //       color: item.color || null,
-    //       size: item.size || null,
-    //       carat: item.carat || null,
-    //     })),
-
-    //   subtotal: orderSummary.subtotal,
-    //   shipping: orderSummary.shipping,
-    //   tax: orderSummary.tax,
-    //   discount: orderSummary.discount,
-    //   total: orderSummary.total,
-
-    //   shippingAddress: selectedAddress,
-    //   specialInstructions: orderDetails.specialInstructions,
-    //   couponCode:
-    //     orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
-    //   paymentMethod: orderDetails.paymentMethod,
-    // };
 
     const orderData = {
       items: buyProductOpen
@@ -467,6 +383,11 @@ const Checkout = () => {
             price: buyProduct.price,
             originalPrice: buyProduct.originalPrice || buyProduct.price,
             image:
+              getVariantImageFromProduct(
+                buyProduct,
+                buyProduct.color,
+                buyProduct.size
+              ) ||
               buyProduct.image ||
               "/placeholder.svg?height=100&width=100&text=Product",
             color: buyProduct.color || null,
@@ -474,36 +395,18 @@ const Checkout = () => {
             carat: buyProduct.carat || null,
           },
         ]
-        : cartItems.map((item) => {
-          let productImage = null;
-
-          if (Array.isArray(item.product.images)) {
-            productImage = item.product.images[0];
-          } else if (typeof item.product.images === "string") {
-            try {
-              const parsed = JSON.parse(item.product.images);
-              if (Array.isArray(parsed)) {
-                productImage = parsed[0];
-              }
-            } catch (e) {
-              console.log("Image JSON parse error:", e);
-            }
-          }
-
-          return {
-            id: item.product.id,
-            name: item.product.name,
-            quantity: item.quantity,
-            price: item.price,
-            originalPrice: item.originalPrice || item.price,
-            image:
-              productImage ||
-              "/placeholder.svg?height=100&width=100&text=Product",
-            color: item.color || null,
-            size: item.size || null,
-            carat: item.carat || null,
-          };
-        }),
+        : cartItems.map((item) => ({
+          id: item.product.id,
+          name: item.product.name,
+          quantity: item.quantity,
+          price: item.price,
+          originalPrice: item.originalPrice || item.price,
+          image:
+            getVariantImage(item) || "/placeholder.svg?height=100&width=100&text=Product",
+          color: item.color || null,
+          size: item.size || null,
+          carat: item.carat || null,
+        })),
 
       subtotal: orderSummary.subtotal,
       shipping: orderSummary.shipping,
@@ -517,6 +420,7 @@ const Checkout = () => {
         orderDetails.couponDiscount > 0 ? orderDetails.couponCode : null,
       paymentMethod: orderDetails.paymentMethod,
     };
+
 
 
     try {
@@ -548,7 +452,73 @@ const Checkout = () => {
 
   const orderSummary = calculateOrderSummary()
 
-  console.log(buyProduct);
+  const BASE_URL = "http://localhost:5000";
+
+
+  // Cart Item
+  const getVariantImage = (item) => {
+    try {
+      if (!item?.product) return null;
+
+      const variants =
+        typeof item.product.variants === "string"
+          ? JSON.parse(item.product.variants)
+          : item.product.variants || [];
+
+      const matchedVariant = variants.find(
+        (v) => v.color === item.color && v.size === item.size
+      );
+
+      if (!matchedVariant?.images?.length) return null;
+
+      const image =
+        Array.isArray(matchedVariant.images)
+          ? matchedVariant.images[0]
+          : typeof matchedVariant.images === "string"
+            ? JSON.parse(matchedVariant.images)[0]
+            : null;
+
+      return image ? `${BASE_URL}/${image}` : null;
+    } catch (err) {
+      console.error("Variant image error:", err);
+      return null;
+    }
+  };
+
+  //Buy Item
+  const getBuyNowVariantImage = (product) => {
+    try {
+      if (!product) return null;
+
+      const variants =
+        Array.isArray(product.variants)
+          ? product.variants
+          : typeof product.variants === "string"
+            ? JSON.parse(product.variants)
+            : [];
+
+      const matchedVariant = variants.find(
+        (v) => v.color === product.color && v.size === product.size
+      );
+
+      if (!matchedVariant?.images?.length) return null;
+
+      const image =
+        Array.isArray(matchedVariant.images)
+          ? matchedVariant.images[0]
+          : typeof matchedVariant.images === "string"
+            ? JSON.parse(matchedVariant.images)[0]
+            : null;
+
+      console.log(image);
+            
+      return image ? `${image}` : null;
+    } catch (err) {
+      console.error("BuyNow variant image error:", err);
+      return null;
+    }
+  };
+
   
 
   return (
@@ -717,56 +687,42 @@ const Checkout = () => {
                       ) : (
                         <>
                           {/* BUY NOW PRODUCT */}
-                            {buyProductOpen && buyProduct && (() => {
-                              let variantImage = null;
+                            {buyProductOpen && buyProduct && (
+                              <div key={buyProduct.id} className="cart-item">
+                                <div className="item-image">
+                                  <img
+                                    src={
+                                      getBuyNowVariantImage(buyProduct) ||
+                                      buyProduct.image
+                                    }
+                                    alt={buyProduct.name}
+                                    // onError={(e) => {
+                                    //   e.currentTarget.src =
+                                    //     "/placeholder.svg?height=100&width=100&text=Product";
+                                    // }}
+                                  />
+                                </div>
 
-                              try {
-                                const variants = Array.isArray(buyProduct.variants)
-                                  ? buyProduct.variants
-                                  : typeof buyProduct.variants === "string"
-                                    ? JSON.parse(buyProduct.variants)
-                                    : [];
+                                <div className="item-details">
+                                  <h6 className="item-name">{buyProduct.name}</h6>
 
-                                const matchedVariant = variants.find(
-                                  (v) => v.color === buyProduct.color && v.size === buyProduct.size
-                                );
-
-                                if (matchedVariant?.images?.length > 0) {
-                                  variantImage = matchedVariant.images[0];
-                                }
-                              } catch (err) {
-                                console.error("BuyNow variant image error:", err);
-                              }
-
-                              return (
-                                <div key={buyProduct.id} className="cart-item">
-                                  <div className="item-image">
-                                    <img
-                                      src={variantImage || "/placeholder.svg"}
-                                      alt={buyProduct.name}
-                                    />
+                                  <div className="item-variants">
+                                    {buyProduct.color && <span>Color: {buyProduct.color}</span>}
+                                    {buyProduct.size && <span>Size: {buyProduct.size}</span>}
+                                    {buyProduct.carat && <span>Carat: {buyProduct.carat}</span>}
                                   </div>
 
-                                  <div className="item-details">
-                                    <h6 className="item-name">{buyProduct.name}</h6>
-
-                                    <div className="item-variants">
-                                      {buyProduct.color && <span>Color: {buyProduct.color}</span>}
-                                      {buyProduct.size && <span>Size: {buyProduct.size}</span>}
-                                      {buyProduct.carat && <span>Carat: {buyProduct.carat}</span>}
-                                    </div>
-
-                                    <div className="item-price">
-                                      ₹{buyProduct.price} × {buyProduct.quantity}
-                                    </div>
-                                  </div>
-
-                                  <div className="item-total">
-                                    ₹{(buyProduct.price * buyProduct.quantity).toFixed(2)}
+                                  <div className="item-price">
+                                    ₹{buyProduct.price} × {buyProduct.quantity}
                                   </div>
                                 </div>
-                              );
-                            })()}
+
+                                <div className="item-total">
+                                  ₹{(buyProduct.price * buyProduct.quantity).toFixed(2)}
+                                </div>
+                              </div>
+                            )}
+
 
 
                           {/* CART ITEMS */}
@@ -777,15 +733,15 @@ const Checkout = () => {
                                 <div className="item-image">
                                   <img
                                     src={
-                                      item.image ||
+                                      getVariantImage(item) ||
                                       "/placeholder.svg?height=60&width=60&text=Product"
                                     }
-                                    alt={item.name}
+                                    alt={item.product?.name || "Product"}
                                   />
                                 </div>
 
                                 <div className="item-details">
-                                  <h6 className="item-name">{item.name}</h6>
+                                  <h6 className="item-name">{item.product?.name}</h6>
 
                                   <div className="item-variants">
                                     {item.color && <span>Color: {item.color}</span>}

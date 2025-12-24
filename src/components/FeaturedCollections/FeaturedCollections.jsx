@@ -81,6 +81,7 @@ const FeaturedCollections = () => {
             availability: item.availability || "N/A",
             description: item.description || "No description available",
             rating: parseFloat(item.rating) || 0,
+            status: item.status || "N/A",
             variants,
             featured: item.featured || false, // Assuming API may provide a featured flag
           }
@@ -270,7 +271,7 @@ const FeaturedCollections = () => {
                   const hoverImage = variantImages[1] || product.secondaryImage || mainImage;
 
                   return (
-                    <div key={product.id} className="product-card" onClick={() => handleNavigation(product.id, product)}>
+                    <div key={product.id} className={`product-card ${product.status === "inactive" ? "disabled" : ""}`} onClick={() => handleNavigation(product.id, product)}>
                       <div
                         className="product-image-container"
                         onMouseEnter={() => handleImageHover(product.id)}

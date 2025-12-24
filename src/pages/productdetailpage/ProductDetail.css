@@ -313,10 +313,21 @@
 .stock-indicator {
   width: 10px;
   height: 10px;
-  background-color: #4caf50;
   border-radius: 50%;
   display: inline-block;
 }
+
+/* ✅ Available */
+.stock-indicator.green {
+  background-color: #4caf50;
+}
+
+/* ❌ Not available */
+.stock-indicator.red {
+  background-color: #ff4a3d;
+}
+
+
 
 .quantity-control {
   display: flex;
@@ -600,3 +611,18 @@
   }
 }
 
+.quantity-btn:disabled,
+.quantity-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.heart-icon-quantity.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

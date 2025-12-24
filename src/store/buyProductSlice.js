@@ -3,7 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const buyProductSlice = createSlice({
     name: "buyProduct",
     initialState: {
-        item: JSON.parse(localStorage.getItem("buyProduct")) || null,
+        item: null,
         buyOpen: false,
     },
 
@@ -11,13 +11,13 @@ const buyProductSlice = createSlice({
         // Set selected product
         setBuyProduct: (state, action) => {
             state.item = action.payload;
-            localStorage.setItem("buyProduct", JSON.stringify(state.item));
+            // localStorage.setItem("buyProduct", JSON.stringify(state.item));
         },
 
         // Clear selected product
         clearBuyProduct: (state) => {
             state.item = null;
-            localStorage.removeItem("buyProduct");
+            // localStorage.removeItem("buyProduct");
         },
 
         // 🔥 NEW: Open Buy Now Popup

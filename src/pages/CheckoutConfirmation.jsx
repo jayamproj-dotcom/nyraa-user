@@ -15,9 +15,13 @@ const UpdatedCheckoutConfirmation = () => {
   useEffect(() => {
     if (lastCreatedOrder && lastCreatedOrder.items && lastCreatedOrder.items.length > 0) {
       setShowPopup(true)
-    } else {
-      navigate("/")
-    }
+    } 
+
+
+
+    // else {
+    //   navigate("/")
+    // }
   }, [lastCreatedOrder, navigate])
 
   const handlePopupClose = () => {
@@ -25,8 +29,8 @@ const UpdatedCheckoutConfirmation = () => {
   }
 
   const handleViewOrders = () => {
-    dispatch(clearLastCreatedOrder())
     navigate("/account/orders")
+    dispatch(clearLastCreatedOrder())
   }
 
   const handleExploreCollections = () => {

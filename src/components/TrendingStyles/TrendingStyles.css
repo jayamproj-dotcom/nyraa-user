@@ -71,6 +71,8 @@
   transition: transform 0.2s ease;
 }
 
+
+
 .trending-card:hover {
   transform: translateY(-5px);
 }
@@ -79,6 +81,28 @@
   position: relative;
   width: 100%;
   padding-top: 133.33%; /* 3:4 aspect ratio */
+}
+
+.image-container.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* 🔴 Inactive Overlay Text */
+.image-container.disabled::after {
+  content: "This Product is Inactive";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 10;
+  padding: 12px;
 }
 
 .trending-image {

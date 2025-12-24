@@ -30,6 +30,7 @@
 }
 
 .product-card {
+  position: relative;
   background: #fff;
   border-radius: 10px;
   overflow: hidden;
@@ -39,6 +40,28 @@
   min-width: 0;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   width: 100%;
+}
+
+.product-card.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* 🔴 Inactive Overlay Text */
+.product-card.disabled::after {
+  content: "This Product is Inactive";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 10;
+  padding: 12px;
 }
 
 .product-card:hover {

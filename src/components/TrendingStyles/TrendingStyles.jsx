@@ -88,6 +88,7 @@ const TrendingStyles = () => {
             description: item.description || "No description available",
             rating: parseFloat(item.rating) || 0,
             variants,
+            status: item.status || "N/A",
             trending: item.trending || item.featured || false, // Check for trending or featured flag
           }
         })
@@ -394,8 +395,8 @@ const TrendingStyles = () => {
                     : null;
 
                 return (
-                  <div key={item.id} className="trending-card" onClick={() => handleProductClick(item)}>
-                    <div className="image-container">
+                  <div key={item.id} className={`trending-card`}>
+                    <div className={`image-container ${item.status === "inactive" ? "disabled" : ""}`} onClick={() => handleProductClick(item)}>
                       <img
                         src={variantImage || item.image || "/placeholder.svg"}
                         alt={item.name}

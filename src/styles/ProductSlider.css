@@ -100,6 +100,7 @@
   cursor: pointer;
 }
 
+
 /* Show the BuyNowButton on hover for desktop screens */
 @media (min-width: 768px) {
   .product-card:hover .product-list-button {

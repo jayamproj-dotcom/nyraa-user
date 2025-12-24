@@ -51,6 +51,8 @@ const ProductDetail = () => {
   const zoomFactor = 2.5;
   const [filteredColors, setFilteredColors] = useState([]);
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const isVariantOutOfStock = !selectedVariant || Number(selectedVariant.quantity) === 0;
+
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -70,9 +72,9 @@ const ProductDetail = () => {
         const item = data.data;
         const variants = Array.isArray(item.variants) ? item.variants : [];
         const firstVariant = variants[0] || {};
-        const specifications = Array.isArray(item.specifications) && item.specifications.length > 0
-          ? item.specifications[0]
-          : {};
+        const specifications = Array.isArray(item.specifications)
+          ? item.specifications
+          : [];
 
         // Normalize variant images
         const normalizedVariants = variants.map((variant) => ({
@@ -416,8 +418,41 @@ const handleMouseMove = (e) => {
     setHoverIndex(null);
   };
 
+  const normalizeSpecifications = (specs) => {
+    if (!Array.isArray(specs)) return {};
+
+    const result = {};
+
+    specs.forEach((spec) => {
+      Object.entries(spec).forEach(([rawKey, value]) => {
+        if (!value) return;
+
+        // ✅ Normalize key (Fabric, fabric → Fabric)
+        const key =
+          rawKey.charAt(0).toUpperCase() + rawKey.slice(1).toLowerCase();
+
+        if (!result[key]) {
+          result[key] = new Set();
+        }
+
+        result[key].add(value);
+      });
+    });
+
+    // Convert Set → Array
+    Object.keys(result).forEach((key) => {
+      result[key] = Array.from(result[key]);
+    });
+
+    return result;
+  };
+
+
   const renderSpecificationValue = (value) => {
-    if (typeof value === 'object' && value !== null) {
+    if (Array.isArray(value)) {
+      return value.join(", ");
+    }
+    if (typeof value === "object" && value !== null) {
       return Object.entries(value)
         .map(([k, v]) => `${k}: ${v}`)
         .join(", ");
@@ -450,6 +485,9 @@ const handleMouseMove = (e) => {
     if (typeof category !== 'string') return "Uncategorized";
     return category.charAt(0).toUpperCase() + category.slice(1);
   };
+
+  const isInStock = product?.availability?.toLowerCase() === "in_stock";
+
 
   return (
     <>
@@ -580,22 +618,17 @@ const handleMouseMove = (e) => {
                   <span className="d-flex align-items-center">
                     Availability:
                     <span className="ms-2 d-flex align-items-center">
-                      <span className="stock-indicator me-2"></span>
-                      {product.availability || "In Stock"}
+                      <span
+                        className={`stock-indicator ${product.availability === "in_stock" ? "green" : "red"
+                          }`}
+                      ></span>
+                      {product.availability === "in_stock" ? "In Stock" : "Out of Stock"}
                     </span>
                   </span>
                 </div>
                 <div className="color-selection mb-3">
                   <div className="mb-2">Color: {selectedColor}</div>
                   <div className="d-flex gap-2">
-                    {/* {product.color.split(", ").map((color) => (
-                      <button
-                        key={color}
-                        className={`color-btn ${selectedColor === color ? "active" : ""}`}
-                        style={{ backgroundColor: color.toLowerCase() }}
-                        onClick={() => handleColorChange(color)}
-                      />
-                    ))} */}
                     {filteredColors.length > 0 ? (
                       filteredColors.map((color) => (
                         <button
@@ -632,7 +665,7 @@ const handleMouseMove = (e) => {
                       <button
                         className="quantity-btn"
                         onClick={() => handleQuantityChange(quantity - 1)}
-                        disabled={quantity <= 1}
+                        disabled={!isInStock || quantity <= 1 || isVariantOutOfStock}
                       >
                         −
                       </button>
@@ -645,6 +678,7 @@ const handleMouseMove = (e) => {
                       <button
                         className="quantity-btn"
                         onClick={() => handleQuantityChange(quantity + 1)}
+                        disabled={!isInStock || isVariantOutOfStock}
                       >
                         +
                       </button>
@@ -663,12 +697,14 @@ const handleMouseMove = (e) => {
                     label="Add to Cart"
                     onClick={handleAddToCart}
                     showIcon={true}
+                    disabled={!isInStock || isVariantOutOfStock}
                   />
                   <PurchaseNowTwoButton
                     label="Buy Now"
                     productId={product.slug}
                     onClick={handleBuyNow}
                     showIcon={true}
+                    disabled={!isInStock || isVariantOutOfStock}
                   />
                 </div>
                 <div className="product-tabs mt-4">
@@ -690,9 +726,12 @@ const handleMouseMove = (e) => {
                     {activeTab === "specifications" && (
                       <div className="specifications-tab">
                         <ul>
-                          {Object.entries(product.specifications || {}).map(([key, value]) => (
+                          {Object.entries(
+                            normalizeSpecifications(product.specifications)
+                          ).map(([key, value]) => (
                             <li key={key}>
-                              <span className="meta-label">{key}:</span> {renderSpecificationValue(value)}
+                              <span className="meta-label">{key}:</span>{" "}
+                              {renderSpecificationValue(value)}
                             </li>
                           ))}
                         </ul>

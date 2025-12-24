@@ -203,6 +203,7 @@ const ProductList = () => {
             availability: item.availability || "N/A",
             description: item.description || "No description available",
             rating: parseFloat(item.rating) || 0,
+            status: item.status || "N/A",
 
             variants: normalizedVariants, // ✅ variants with full image URLs
           };
@@ -588,8 +589,8 @@ const ProductList = () => {
 
               <div className="row row-cols-1 row-cols-sm-2 row-cols-md-4 row-cols-lg-4 g-4">
                 {filteredProducts.map((product) => (
-                  <div key={product.id} className="col">
-                    <div className="product-card h-100">
+                  <div key={product.id} className="col" title="gsfigsjfgdjfgjhu">
+                    <div className={`product-card h-100 ${product.status === "inactive" ? "disabled" : ""}`}>
                       <div
                         className="product-image-container"
                         onMouseEnter={() => handleImageHover(product.id)}

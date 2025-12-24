@@ -74,6 +74,7 @@ const LatestProducts = () => {
             image: item.image || item.images?.[0] || "/placeholder.svg",
             secondaryImage: item.images?.[1] || "",
             availability: item.availability || "N/A",
+            status: item.status || "N/A",
             description: item.description || "No description available",
             rating: parseFloat(item.rating) || 0,
             variants,
@@ -280,7 +281,7 @@ const LatestProducts = () => {
                   : null;
 
               return (
-                <div key={product.id} className="product-card">
+                <div key={product.id} className={`product-card ${product.status === "inactive" ? "disabled" : ""}`}>
                   <div
                     className="product-image-container"
                     onMouseEnter={() => handleImageHover(product.id)}

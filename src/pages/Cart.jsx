@@ -116,17 +116,6 @@ const Cart = () => {
               console.error("Variant image error:", error);
             }
 
-            // 🔁 fallback if variant image not found
-            if (!productImage && item.product.image) {
-              productImage = `http://localhost:5000/${item.product.image}`;
-            }
-
-
-            // // fallback to product image
-            // if (!productImage && item.product.image) {
-            //   productImage = `http://localhost:5000/${item.product.image}`;
-            // }
-
             return (
               <div key={item.id} className="row cart-item align-items-center py-2">
 
@@ -134,12 +123,12 @@ const Cart = () => {
                 <div className="col-7 col-md-6 d-flex align-items-center">
                   <img
                     src={productImage || "https://via.placeholder.com/60"}
-                    alt={item.product.name}
+                    alt={item.product?.name || "Product"}
                     className="cart-item-image"
                   />
 
                   <div className="product-details">
-                    <h5 className="mb-1 text-uppercase">{item.product.name}</h5>
+                    <h5 className="mb-1 text-uppercase">{item.product?.name || "Product"}</h5>
                     <p className="mb-1">₹{item.price}</p>
                     <p className="mb-0">
                       {item.color && `Color: ${item.color} | `}
@@ -199,14 +188,32 @@ const Cart = () => {
           <p className="text-center mt-4">Your cart is empty.</p>
         ) : (
           cartItems.map((item) => {
-            // ⭐ FIX IMAGE HERE
+            // ✅ HARD GUARD
+            if (!item.product) return null;
+
+            // ⭐ FIX VARIANT IMAGE
             let productImage = null;
 
             try {
-              const imgArray = JSON.parse(item.product.images); // Parse the string → array
-              productImage = imgArray[0]; // First image
-            } catch (e) {
-              productImage = null;
+              const variants =
+                typeof item.product.variants === "string"
+                  ? JSON.parse(item.product.variants)
+                  : item.product.variants || [];
+
+              // ✅ find correct variant by color + size
+              const matchedVariantIndex = variants.findIndex(
+                (v) => v.color === item.color && v.size === item.size
+              );
+
+              if (matchedVariantIndex !== -1) {
+                const matchedVariant = variants[matchedVariantIndex];
+
+                if (Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0) {
+                  productImage = `http://localhost:5000/${matchedVariant.images[0]}`;
+                }
+              }
+            } catch (error) {
+              console.error("Variant image error:", error);
             }
 
             return (
@@ -215,13 +222,13 @@ const Cart = () => {
                 <div className="product-image-container">
                   <img
                     src={productImage || "https://via.placeholder.com/60"}
-                    alt={item.product.name}
+                    alt={item.product?.name || "Product"}
                     className="mobile-cart-item-image"
                   />
                 </div>
 
                 <div className="product-details">
-                  <div className="product-name">{item.product.name}</div>
+                  <div className="product-name">{item.product?.name || "Product"}</div>
                   <div className="product-price">₹{item.price}</div>
 
                   <div className="product-attributes">
