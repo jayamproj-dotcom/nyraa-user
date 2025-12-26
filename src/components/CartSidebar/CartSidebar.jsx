@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ViewCartButton, PurchaseNowTwoButton, RemoveWishlistButton } from '../ui/Buttons';
-// import { updateQuantity, removeFromCart } from '../../store/cartSlice';
+import { updateCartItem, removeCartItem } from '../../store/cartSlice';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import './CartSidebar.css';
 
@@ -31,13 +31,9 @@ const CartSidebar = ({
       .toFixed(2);
   }, [cartItems]);
 
-  const handleQuantityChange = useCallback(
-    (id, newQuantity) => {
-      const quantity = Math.max(1, parseInt(newQuantity) || 1);
-      dispatch(updateQuantity({ id, quantity }));
-    },
-    [dispatch]
-  );
+  const handleQuantityChange = (id, newQuantity) => {
+    dispatch(updateCartItem({ id, quantity: Math.max(1, newQuantity) }));
+  };
 
   const handleRemovePrompt = useCallback((item) => {
     setModalConfig({
@@ -52,7 +48,7 @@ const CartSidebar = ({
     const { itemToRemove, actionType } = modalConfig;
     
     if (actionType === 'remove' && itemToRemove) {
-      dispatch(removeFromCart(itemToRemove.id));
+      dispatch(removeCartItem(itemToRemove.id));
       toast.success("Item removed from cart successfully", {
         position: "top-right",
         autoClose: 3000,
@@ -69,6 +65,8 @@ const CartSidebar = ({
   const handleCancelAction = useCallback(() => {
     setShowConfirmModal(false);
   }, []);
+
+    
 
   return (
     <Offcanvas show={show} onHide={handleClose} placement="end" className="cart-sidebar">
@@ -92,57 +90,100 @@ const CartSidebar = ({
                 <div className="col-6">PRODUCT</div>
                 <div className="col-6 text-end">TOTAL</div>
               </div>
-              {cartItems.map((item) => (
-                <div key={item.id} className="row cart-item align-items-center mb-3">
-                  <div className="col-6 d-flex align-items-center">
-                    <img
-                      src={item.images ? item.images[0] : item.image || 'https://via.placeholder.com/60x60'}
-                      alt={item.name}
-                      style={{ width: '60px', height: '60px', objectFit: 'cover', marginRight: '10px' }}
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/60x60';
-                      }}
-                    />
-                    <div>
-                      <h6 className="mb-1">{item.name}</h6>
-                      <p className="mb-1">₹{item.price}</p>
-                      <div className="d-flex align-items-center">
-                        <button
-                          className="btn btn-outline-secondary btn-sm"
-                          onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                          style={{ padding: '2px 6px' }}
-                          disabled={item.quantity <= 1}
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          min="1"
-                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          style={{ width: '50px', textAlign: 'center', margin: '0 8px', fontSize: '0.85rem' }}
-                          className="form-control form-control-sm"
+                {cartItems.map((item) => {
+                  console.log("item", item);
+                  
+                  let productImage = null;
+
+                  try {
+                    const variants =
+                      typeof item.product?.variants === "string"
+                        ? JSON.parse(item.product.variants)
+                        : item.product?.variants || [];
+
+                    const matchedVariant = variants.find(
+                      (v) => v.color === item.color && v.size === item.size
+                    );
+
+                    console.log(matchedVariant);
+                    
+
+                    if (matchedVariant?.images?.length > 0) {
+                      productImage = `http://localhost:5000/${matchedVariant.images[0]}`;
+                    }
+
+                    console.log(productImage);
+                    
+                  } catch (error) {
+                    console.error("Variant image error:", error);
+                  }
+
+                  return (
+                    <div key={item.id} className="row cart-item align-items-center mb-3">
+                      <div className="col-6 d-flex align-items-center">
+                        <img
+                          src={productImage || item.image || "https://via.placeholder.com/60x60"}
+                          alt={item.name}
+                          style={{
+                            width: "60px",
+                            height: "60px",
+                            objectFit: "cover",
+                            marginRight: "10px",
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.src = "https://via.placeholder.com/60x60";
+                          }}
                         />
-                        <button
-                          className="btn btn-outline-secondary btn-sm"
-                          onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                          style={{ padding: '2px 6px' }}
-                        >
-                          +
-                        </button>
-                        <RemoveWishlistButton
-                          productId={item.id}
-                          onClick={() => handleRemovePrompt(item)}
-                          className="ms-2"
-                        />
+
+                        <div>
+                          <h6 className="mb-1">{item.product.name}</h6>
+                          <p className="mb-1">₹{item.price}</p>
+
+                          <div className="d-flex align-items-center">
+                            <button
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                            >
+                              -
+                            </button>
+
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              min="1"
+                              onChange={(e) =>
+                                handleQuantityChange(item.id, Number(e.target.value))
+                              }
+                              className="form-control form-control-sm mx-2"
+                              style={{ width: "50px", textAlign: "center" }}
+                            />
+
+                            <button
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                            >
+                              +
+                            </button>
+
+                            <RemoveWishlistButton
+                              productId={item.id}
+                              onClick={() => handleRemovePrompt(item)}
+                              className="ms-2"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-6 text-end">
+                        <p className="mb-0">
+                          ₹{(item.price * item.quantity).toFixed(2)}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                  <div className="col-6 text-end">
-                    <p className="mb-0">₹{(item.price * item.quantity).toFixed(2)}</p>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+
               <div className="cart-total d-flex justify-content-between">
                 <span>Total:</span>
                 <span>₹{getTotal()}</span>

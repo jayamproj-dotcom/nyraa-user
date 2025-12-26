@@ -11,7 +11,7 @@ const buyProductSlice = createSlice({
         // Set selected product
         setBuyProduct: (state, action) => {
             state.item = action.payload;
-            // localStorage.setItem("buyProduct", JSON.stringify(state.item));
+            //localStorage.setItem("buyProduct", JSON.stringify(state.item));
         },
 
         // Clear selected product

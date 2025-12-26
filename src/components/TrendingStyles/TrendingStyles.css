@@ -186,7 +186,7 @@
 .original-price {
   text-decoration: line-through;
   color: var(--color-medium-gray);
-  margin-right: 8px;
+  /* margin-right: 8px; */
 }
 
 .current-price {

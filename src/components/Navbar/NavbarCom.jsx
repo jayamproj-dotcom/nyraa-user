@@ -9,6 +9,8 @@ import IconLink from "../ui/Icons"
 import SearchSuggestions from "../Search/SearchSuggestions"
 import ConfirmationModal from "../ui/ConfirmationModal"
 import "./NavbarComp.css"
+import { logout } from "../../store/authSlice";
+
 
 const Navbar = () => {
   const [showSearch, setShowSearch] = useState(false)
@@ -17,15 +19,17 @@ const Navbar = () => {
   const [offcanvasShow, setOffcanvasShow] = useState(false)
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState({ more: false })
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 992)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [modalConfig, setModalConfig] = useState({
     actionType: "logout",
     title: "Confirm Logout",
   })
-  const [userData, setUserData] = useState({});
+
   const dispatch = useDispatch();
+  const { isLoggedIn, user } = useSelector((state) => state.auth);
+
+  console.log("AUTH STATE:", { isLoggedIn, user });
 
   const cartCount = useSelector((state) => state.cart.items.length);
   const wishlistCount = useSelector((state) => state.wishlist.items.length);
@@ -36,48 +40,48 @@ const Navbar = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  useEffect(() => {
-    const checkLoginStatus = () => {
-      const savedLoginStatus = localStorage.getItem("isLoggedIn")
-      const savedUserData = localStorage.getItem("userData")
-      const token = localStorage.getItem("token")
+  // useEffect(() => {
+  //   const checkLoginStatus = () => {
+  //     const savedLoginStatus = localStorage.getItem("isLoggedIn")
+  //     const savedUserData = localStorage.getItem("userData")
+  //     const token = localStorage.getItem("token")
 
-      const isAuthenticated = savedLoginStatus === "true" && token
-      setIsLoggedIn(isAuthenticated)
+  //     const isAuthenticated = savedLoginStatus === "true" && token
+  //     setIsLoggedIn(isAuthenticated)
 
-      if (savedUserData) {
-        try {
-          setUserData(JSON.parse(savedUserData))
-        } catch (error) {
-          console.error("Error parsing user data:", error)
-          setUserData({})
-        }
-      } else {
-        setUserData({})
-      }
-    }
+  //     if (savedUserData) {
+  //       try {
+  //         setUserData(JSON.parse(savedUserData))
+  //       } catch (error) {
+  //         console.error("Error parsing user data:", error)
+  //         setUserData({})
+  //       }
+  //     } else {
+  //       setUserData({})
+  //     }
+  //   }
 
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 992)
-    }
+  //   const handleResize = () => {
+  //     setIsMobile(window.innerWidth < 992)
+  //   }
 
-    checkLoginStatus()
-    window.addEventListener("resize", handleResize)
+  //   checkLoginStatus()
+  //   window.addEventListener("resize", handleResize)
 
-    // Listen for storage changes to update login status across tabs
-    const handleStorageChange = (e) => {
-      if (e.key === "isLoggedIn" || e.key === "token" || e.key === "userData") {
-        checkLoginStatus()
-      }
-    }
+  //   // Listen for storage changes to update login status across tabs
+  //   const handleStorageChange = (e) => {
+  //     if (e.key === "isLoggedIn" || e.key === "token" || e.key === "userData") {
+  //       checkLoginStatus()
+  //     }
+  //   }
 
-    window.addEventListener("storage", handleStorageChange)
+  //   window.addEventListener("storage", handleStorageChange)
 
-    return () => {
-      window.removeEventListener("resize", handleResize)
-      window.removeEventListener("storage", handleStorageChange)
-    }
-  }, [location])
+  //   return () => {
+  //     window.removeEventListener("resize", handleResize)
+  //     window.removeEventListener("storage", handleStorageChange)
+  //   }
+  // }, [location])
 
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
@@ -105,34 +109,46 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-    useEffect(() => {
-      dispatch(fetchWishlist());
-      dispatch(fetchCart());
-    }, []);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 992);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
 
   // Check if user profile is complete
+  // const isProfileComplete = () => {
+  //   return userData.name && userData.name.trim() !== "" && userData.phone && userData.phone.trim() !== ""
+  // }
+
   const isProfileComplete = () => {
-    return userData.name && userData.name.trim() !== "" && userData.phone && userData.phone.trim() !== ""
-  }
+    return user?.name?.trim() && user?.phone?.trim();
+  };
+
 
   // Handle protected navigation (cart, wishlist)
   const handleProtectedNavigation = (path) => {
+
+    console.log(" isLoggedIn:", isLoggedIn);
+    
     if (!isLoggedIn) {
-      navigate("/login")
-      return
+      navigate("/login");
+      return;
     }
 
     if (!isProfileComplete()) {
-      // Store the intended destination
-      sessionStorage.setItem("redirectAfterProfile", path)
-      navigate("/account/profile?complete=true")
-      return
+      sessionStorage.setItem("redirectAfterProfile", path);
+      navigate("/account/profile?complete=true");
+      return;
     }
 
-    navigate(path)
-    setOffcanvasShow(false)
-    setUserDropdownOpen(false)
-  }
+    setOffcanvasShow(false);
+    setUserDropdownOpen(false);
+    navigate(path);
+  };
 
   const toggleSearch = () => {
     setShowSearch((prev) => !prev)
@@ -182,19 +198,21 @@ const Navbar = () => {
   }
 
   const handleNavigation = (path) => {
-    navigate(path)
-    setOffcanvasShow(false)
-    setUserDropdownOpen(false)
-    setMobileDropdownOpen({ more: false })
+     navigate(path)
+     setOffcanvasShow(false)
+     setUserDropdownOpen(false)
+     setMobileDropdownOpen({ more: false })
   }
 
   const handleAccountClick = () => {
-    if (isLoggedIn) {
-      handleNavigation("/account/profile")
-    } else {
-      handleNavigation("/login")
+    if (!isLoggedIn) {
+      navigate("/login");
+      return;
     }
-  }
+     console.log("adfgdoighfoidhbgfjihb");
+    
+    handleNavigation("/account/profile");
+  };
 
   const handleLogoutPrompt = () => {
     setModalConfig({
@@ -208,27 +226,43 @@ const Navbar = () => {
     }
   }
 
+  // const handleConfirmAction = () => {
+  //   const { actionType } = modalConfig
+
+  //   if (actionType === "logout") {
+  //     // Clear all auth-related data
+  //     localStorage.removeItem("token")
+  //     localStorage.removeItem("userData")
+  //     localStorage.removeItem("isLoggedIn")
+  //     sessionStorage.clear()
+
+  //     // Update state immediately
+  //     setIsLoggedIn(false)
+  //     setUserData({})
+
+  //     // Close modal first
+  //     setShowConfirmModal(false)
+
+  //     // Force navigation with page reload to ensure clean state
+  //     window.location.href = "/nyraa/login"
+  //   }
+  // }
+
   const handleConfirmAction = () => {
-    const { actionType } = modalConfig
-
-    if (actionType === "logout") {
-      // Clear all auth-related data
-      localStorage.removeItem("token")
-      localStorage.removeItem("userData")
-      localStorage.removeItem("isLoggedIn")
-      sessionStorage.clear()
-
-      // Update state immediately
-      setIsLoggedIn(false)
-      setUserData({})
-
-      // Close modal first
-      setShowConfirmModal(false)
-
-      // Force navigation with page reload to ensure clean state
-      window.location.href = "/nyraa/login"
+    if (modalConfig.actionType === "logout") {
+      dispatch(logout());        // ✅ clears redux + sessionStorage
+      setShowConfirmModal(false);
+      navigate("/login", { replace: true });
     }
-  }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      dispatch(fetchWishlist());
+      dispatch(fetchCart());
+    }
+  }, [dispatch, isLoggedIn]);
+
 
   const handleCancelAction = () => {
     setShowConfirmModal(false)

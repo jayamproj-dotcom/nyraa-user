@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Modal, Form, Spinner } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-// import { addToCart } from "../store/cartSlice";
+import { addItemToCart } from "../store/cartSlice";
+import { setBuyProduct, openBuyNow } from "../store/buyProductSlice"
 import { addToWishlist, removeFromWishlist } from "../store/wishlistSlice";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -27,6 +28,7 @@ const ProductList = () => {
   const { category } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const {isLoggedIn} = useSelector((state) => state.auth);
   const cartItems = useSelector((state) => state.cart.items) || [];
   const wishlistItems = useSelector((state) => state.wishlist.items) || [];
   const displayCategory = category ? category.charAt(0).toUpperCase() + category.slice(1) : "All Products";
@@ -369,26 +371,157 @@ const ProductList = () => {
     setShowPopup(true);
   };
 
+  const getFirstColor = (color) => {
+    if (!color) return null;
+    if (Array.isArray(color)) return color[0];
+    if (typeof color === "string") return color.split(",")[0].trim();
+    return null;
+  };
+
+  
+
+  // const handleAddToCart = useCallback(
+  //   (product) => {
+
+  //     if (!isLoggedIn) {
+  //       toast.info("Please login to add items to cart", {
+  //         position: "top-center",
+  //         autoClose: 3000,
+  //       });
+
+  //       navigate("/login");
+  //       return;
+  //     }
+
+  //     console.log(product);
+      
+  //     // const addCartItem = {
+  //     //   productId: product.id,
+  //     //   quantity,
+  //     //   size: product?.size?.[0] || null,
+  //     //   color: getFirstColor(product.color),
+  //     //   price: product?.price || 0,
+  //     // };
+
+  //     // ⭐ FIX VARIANT IMAGE
+  //     let productImage = null;
+
+  //     try {
+  //       const variants =
+  //         typeof item.product.variants === "string"
+  //           ? JSON.parse(item.product.variants)
+  //           : item.product.variants || [];
+
+  //       // ✅ find correct variant by color + size
+  //       const matchedVariantIndex = variants.findIndex(
+  //         (v) => v.color === item.color && v.size === item.size
+  //       );
+
+  //       if (matchedVariantIndex !== -1) {
+  //         const matchedVariant = variants[matchedVariantIndex];
+
+  //         if (Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0) {
+  //           productImage = `http://localhost:5000/${matchedVariant.images[0]}`;
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error("Variant image error:", error);
+  //     }
+
+  //     const addCartItem = {
+  //       productId: product.id,
+  //       name: product.name,
+  //       price: product?.price || 0,
+  //       quantity,
+  //       size: product?.size?.[0] || null,
+  //       color: getFirstColor(product.color),
+  //       image: selectedVariant.images?.[0]
+  //         ? `http://localhost:5000/${selectedVariant.images[0]}`
+  //         : null,
+  //     };
+
+      
+  //     dispatch(addItemToCart(addCartItem));
+  //     toast.success("Item added to cart successfully", {
+  //       position: "top-right",
+  //       autoClose: 3000,
+  //       hideProgressBar: false,
+  //       closeOnClick: true,
+  //       pauseOnHover: true,
+  //       draggable: true,
+  //     });
+  //     setShowPopup(false);
+  //     setShowCartSidebar(true);
+  //   },
+  //   [dispatch, quantity],
+  // );
+
   const handleAddToCart = useCallback(
     (product) => {
-      dispatch(addToCart({ ...product, quantity }));
+      if (!isLoggedIn) {
+        toast.info("Please login to add items to cart", {
+          position: "top-center",
+          autoClose: 3000,
+        });
+        navigate("/login");
+        return;
+      }
+
+      // ✅ normalize variants
+      const variants =
+        typeof product?.variants === "string"
+          ? JSON.parse(product.variants)
+          : product?.variants || [];
+
+      // ✅ pick default variant (or selected one later)
+      const selectedVariant = variants[0];
+
+      // ✅ extract image
+      const image = selectedVariant?.images?.[0]
+        ? `${selectedVariant.images[0]}`
+        : product.image || "/placeholder.svg";
+
+      const addCartItem = {
+        productId: product.id,
+        name: product.name,
+        price: selectedVariant?.price ?? product.price ?? 0,
+        quantity,
+        size: selectedVariant?.size ?? null,
+        color: selectedVariant?.color ?? null,
+        image, // ⭐ store image directly
+      };
+
+      dispatch(addItemToCart(addCartItem));
+
       toast.success("Item added to cart successfully", {
         position: "top-right",
         autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
       });
+
       setShowPopup(false);
       setShowCartSidebar(true);
     },
-    [dispatch, quantity],
+    [dispatch, quantity, isLoggedIn, navigate]
   );
+
 
   const handleBuyNow = useCallback(
     (product) => {
-      dispatch(addToCart({ ...product, quantity }));
+
+      // dispatch(addToCart({ ...product, quantity }));
+      dispatch(
+        setBuyProduct({
+          ...product,
+          price: Number(product.price), 
+          quantity,
+          color: getFirstColor(product.color),
+          size: product?.size?.[0] || null,
+          image:product?.variants?.[0]?.images?.[0],
+        })
+      );
+
+      dispatch(openBuyNow());
+
       toast.success("Item added to cart successfully", {
         position: "top-right",
         autoClose: 3000,
@@ -405,6 +538,17 @@ const ProductList = () => {
 
   const handleWishlistToggle = useCallback(
     (product) => {
+
+      if (!isLoggedIn) {
+        toast.info("Please login to add items to cart", {
+          position: "top-center",
+          autoClose: 3000,
+        });
+
+        navigate("/nyraa/login");
+        return;
+      }
+
       const isInWishlist = wishlistItems.some(
         (item) => Number(item.productId) === Number(product.id)
       );
@@ -421,9 +565,6 @@ const ProductList = () => {
     },
     [dispatch, wishlistItems]
   );
-
-
-  console.log("wishlistItems :" , wishlistItems);
   
 
   const handleImageHover = (productId) => {
@@ -482,6 +623,44 @@ const ProductList = () => {
     );
   }
 
+  const proudctIsAvailable = selectedProduct?.variants?.[0].quantity > 0;
+
+  const isInStock = selectedProduct?.availability?.toLowerCase() === "in_stock";
+  
+  const firstImage = selectedProduct?.variants?.[0]?.images?.[0] ||selectedProduct?.variants?.[0]?.images?.[0]?.url
+
+  const getPriceDetails = (product, selectedVariant) => {
+    const price =
+      selectedVariant?.price ??
+      product?.price ??
+      0;
+
+    const originalPrice =
+      selectedVariant?.originalPrice ??
+      product?.originalPrice ??
+      0;
+
+    const hasDiscount = originalPrice > price;
+
+    const discountPercent = hasDiscount
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : 0;
+
+    return {
+      price,
+      originalPrice,
+      hasDiscount,
+      discountPercent,
+    };
+  };
+
+
+  const selectedVariant = selectedProduct?.variants?.[0] ?? null;
+
+  const { price, originalPrice, hasDiscount, discountPercent } =
+    getPriceDetails(selectedProduct, selectedVariant);
+
+
   return (
     <div>
       <BannerBreadcrumb
@@ -532,60 +711,6 @@ const ProductList = () => {
                   <h5>No products found</h5>
                 </div>
               )}
-              {/* <div className="row row-cols-1 row-cols-sm-2 row-cols-md-4 row-cols-lg-4 g-4">
-                {filteredProducts.map((product) => (
-                  <div key={product.id} className="col">
-                    <div className="product-card h-100">
-                      <div
-                        className="product-image-container"
-                        onMouseEnter={() => handleImageHover(product.id)}
-                        onMouseLeave={handleImageLeave}
-                      >
-                        <img
-                          src={
-                            hoveredProductId === product.id && product.secondaryImage
-                              ? product.secondaryImage
-                              : product.image
-                          }
-                          alt={product.name}
-                          className="product-image"
-                          onClick={() => handleProductClick(product)}
-                          onError={(e) => (e.target.src = "/placeholder.svg")} // Fallback for broken images
-                        />
-                        <div className="wishlist-wrapper">
-                          <IconLink
-                            iconType="wishlist"
-                            className={`wishlist-icon ${
-                              wishlistItems.some((item) => item.id === product.id) ? "filled" : ""
-                            }`}
-                            onClick={() => handleWishlistToggle(product)}
-                          />
-                        </div>
-                      </div>
-                      <div className="product-info">
-                        <div className="product-info-content">
-                          <div className="content-wrapper">
-                            <div className="brand-name">{product.brand}</div>
-                            <h3 className="product-name">{product.name}</h3>
-                            <div className="price-container">
-                              {product.discount > 0 && (
-                                <span className="original-price">₹{product.originalPrice.toFixed(0)}</span>
-                              )}
-                              <span className="discounted-price">₹{product.price.toFixed(0)}</span>
-                              {product.discount > 0 && <span className="discount">-{product.discount}%</span>}
-                            </div>
-                          </div>
-                        </div>
-                        <PurchaseNowButton
-                          label="Buy Now"
-                          productId={product.slug} // Use slug instead of id
-                          onClick={() => handleShopNow(product)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div> */}
 
               <div className="row row-cols-1 row-cols-sm-2 row-cols-md-4 row-cols-lg-4 g-4">
                 {filteredProducts.map((product) => (
@@ -670,17 +795,17 @@ const ProductList = () => {
             <div className="row">
               <div className="col-md-6">
                 <img
-                  src={selectedProduct.image || "/placeholder.svg"}
+                  src={firstImage}
                   alt={selectedProduct.name}
                   className="img-fluid"
-                  style={{ maxHeight: "300px", objectFit: "contain", width: "100%" }}
+                  style={{ objectFit: "contain", width: "100%" }}
                   onError={(e) => (e.target.src = "/placeholder.svg")} // Fallback for broken images
                 />
               </div>
               <div className="col-md-6">
                 <div className="product-details">
                   <h5>Price: ₹{selectedProduct.price.toFixed(2)}</h5>
-                  {selectedProduct.discount > 0 && (
+                  {/* {selectedProduct.discount > 0 && (
                     <p className="text-muted">
                       Original Price:{" "}
                       <span className="text-decoration-line-through">
@@ -688,12 +813,31 @@ const ProductList = () => {
                       </span>
                       <span className="text-danger ms-2">-{selectedProduct.discount}%</span>
                     </p>
+                  )} */}
+
+                  {hasDiscount && (
+                    <>
+                      <span className="original-price">₹{originalPrice.toFixed(2)}</span>
+                      <span className="discount">-{discountPercent}%</span>
+                    </>
                   )}
-                  <p>Size: {selectedProduct.size}</p>
+                  <p>Size: {selectedProduct.size[0]}</p>
                   <p>Material: {selectedProduct.material}</p>
                   <p className="mt-2">{selectedProduct.description}</p>
                   <p>Brand: {selectedProduct.brand}</p>
-                  <p>Availability: {selectedProduct.availability}</p>
+                  <div className="availability">
+                    {/* <p>
+                      Availability: {selectedProduct.availability} 
+                      <span
+                        className={`stock-indicator ${selectedProduct.availability === "in_stock" ? "green" : "red"
+                          }`}
+                      />
+                    </p> */}
+
+                    {!proudctIsAvailable && (<p className="text-danger">This Varient is currently out of stock. Pls Choose Another Varient</p>
+                    )}
+                    
+                  </div>
 
                   <div className="quantity-selector mb-3">
                     <label className="me-2">Quantity:</label>
@@ -701,7 +845,7 @@ const ProductList = () => {
                       <button
                         className="quantity-btn"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        disabled={quantity <= 1}
+                        disabled={quantity <= 1 || !isInStock || !proudctIsAvailable}
                       >
                         −
                       </button>
@@ -711,7 +855,7 @@ const ProductList = () => {
                         onChange={(e) => setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))}
                         className="quantity-input"
                       />
-                      <button className="quantity-btn" onClick={() => setQuantity(quantity + 1)}>
+                      <button className="quantity-btn" onClick={() => setQuantity(quantity + 1)} disabled={!isInStock || !proudctIsAvailable}>
                         +
                       </button>
                     </div>
@@ -721,11 +865,13 @@ const ProductList = () => {
                     <AddToCartButton
                       label="Add to Cart"
                       onClick={() => handleAddToCart(selectedProduct)}
+                      disabled={!isInStock || !proudctIsAvailable}
                     />
                     <PurchaseNowTwoButton
                       label="Buy Now"
-                      productId={selectedProduct.slug} // Use slug instead of id
+                      productId={selectedProduct.slug} 
                       onClick={() => handleBuyNow(selectedProduct)}
+                      disabled={!isInStock || !proudctIsAvailable}
                     />
                   </div>
                 </div>

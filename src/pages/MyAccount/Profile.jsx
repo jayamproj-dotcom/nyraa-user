@@ -13,9 +13,13 @@ import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import ConfirmationModal from "../../components/ui/Myaccountconformodel/ConfirmationModal"
 import axios from "axios"
+import { useSelector, useDispatch } from "react-redux";
+import { updateUser, logout } from "../../store/authSlice";
 
 const Profile = () => {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("userData")) || {})
+
+  const { user, token, isLoggedIn } = useSelector((state) => state.auth);
+  // const [user, setUser] = useState(JSON.parse(localStorage.getItem("userData")) || {})
   const [editing, setEditing] = useState({ name: false, phone: false })
   const [tempData, setTempData] = useState({
     name: user.name || "",
@@ -30,65 +34,67 @@ const Profile = () => {
   const [error, setError] = useState("")
   const [isProfileIncomplete, setIsProfileIncomplete] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const dispatch = useDispatch();
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token")
         if (!token) {
-          setError("No authentication token found. Please log in.")
-          navigate("/nyraa/login")
-          return
+          setError("No authentication token found. Please log in.");
+          navigate("/nyraa/login");
+          return;
         }
 
         const response = await axios.get("http://localhost:5000/api/auth/profile", {
           headers: { Authorization: `Bearer ${token}` },
-        })
+        });
 
         if (response.data.success) {
-          setUser(response.data.user)
-          setTempData({
-            name: response.data.user.name || "",
-            phone: response.data.user.phone || "",
-          })
-          localStorage.setItem("userData", JSON.stringify(response.data.user))
+          dispatch(updateUser(response.data.user));
 
-          const completeParam = searchParams.get("complete")
-          const profileIncomplete = !response.data.user.profileComplete || completeParam === "true"
-          setIsProfileIncomplete(profileIncomplete)
+          const completeParam = searchParams.get("complete");
+          const profileIncomplete = !response.data.user.profileComplete || completeParam === "true";
+          setIsProfileIncomplete(profileIncomplete);
 
           if (profileIncomplete) {
-            setEditing({ name: true, phone: true })
-            toast.info("Please complete your profile to continue", {
-              position: "top-center",
-              autoClose: 5000,
-            })
+            setEditing({ name: true, phone: true });
+            toast.info("Please complete your profile to continue", { position: "top-center", autoClose: 5000 });
           }
         }
 
-        setIsLoading(false)
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching profile:", error)
-        setError(error.response?.data?.message || "Error fetching profile")
-        setIsLoading(false)
+        console.error("Error fetching profile:", error);
+        setError(error.response?.data?.message || "Error fetching profile");
+        setIsLoading(false);
         if (error.response?.status === 401) {
-          localStorage.removeItem("token")
-          localStorage.removeItem("userData")
-          localStorage.removeItem("isLoggedIn")
-          navigate("/nyraa/login")
+          dispatch(logout());
+          navigate("/nyraa/login");
         }
       }
+    };
+
+    fetchProfile();
+  }, [dispatch, navigate, searchParams, token]);
+
+  // Initialize tempData whenever user changes
+  useEffect(() => {
+    if (user) {
+      setTempData({ name: user.name || "", phone: user.phone || "" });
     }
-    fetchProfile()
-  }, [navigate, searchParams])
+  }, [user]);
 
   const handleEdit = (field) => {
     if (isProfileIncomplete) return
     setEditing({ ...editing, [field]: true })
     setTempData({ ...tempData, [field]: user[field] || "" })
   }
+
+
+  console.log(user);
+  
 
   const handleCancel = (field) => {
     if (isProfileIncomplete) return
@@ -108,50 +114,32 @@ const Profile = () => {
 
   const handleSave = async (field) => {
     try {
-      const token = localStorage.getItem("token")
       if (!token) {
-        setError("No authentication token found. Please log in.")
-        navigate("/nyraa/login")
-        return
+        setError("No authentication token found. Please log in.");
+        navigate("/nyraa/login");
+        return;
       }
 
-      if (field === "phone") {
-        if (tempData.phone.length < 10) {
-          toast.error("Phone number must be at least 10 digits", {
-            position: "top-center",
-            autoClose: 3000,
-          })
-          return
-        }
+      if (field === "phone" && tempData.phone.length < 10) {
+        toast.error("Phone number must be at least 10 digits", { position: "top-center", autoClose: 3000 });
+        return;
       }
 
       const response = await axios.put(
         "http://localhost:5000/api/auth/profile",
-        {
-          [field]: tempData[field],
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      )
+        { [field]: tempData[field] },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (response.data.success) {
-        setUser(response.data.user)
-        localStorage.setItem("userData", JSON.stringify(response.data.user))
-        setEditing({ ...editing, [field]: false })
-
-        toast.success("Profile updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-        })
+        dispatch(updateUser(response.data.user));
+        setEditing({ ...editing, [field]: false });
+        toast.success("Profile updated successfully!", { position: "top-right", autoClose: 3000 });
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Error updating profile", {
-        position: "top-right",
-        autoClose: 3000,
-      })
+      toast.error(error.response?.data?.message || "Error updating profile", { position: "top-right", autoClose: 3000 });
     }
-  }
+  };
 
   const handleCompleteProfile = async () => {
     if (!tempData.name.trim() || !tempData.phone.trim()) {
@@ -219,16 +207,25 @@ const Profile = () => {
     setShowConfirmModal(true)
   }
 
+  // const handleConfirmAction = () => {
+  //   if (modalConfig.actionType === "signout") {
+  //     localStorage.removeItem("token")
+  //     localStorage.removeItem("userData")
+  //     localStorage.removeItem("isLoggedIn")
+  //     sessionStorage.clear()
+  //     window.location.href = "/nyraa/login"
+  //   }
+  //   setShowConfirmModal(false)
+  // }
+
   const handleConfirmAction = () => {
     if (modalConfig.actionType === "signout") {
-      localStorage.removeItem("token")
-      localStorage.removeItem("userData")
-      localStorage.removeItem("isLoggedIn")
-      sessionStorage.clear()
-      window.location.href = "/nyraa/login"
+      dispatch(logout());
+      sessionStorage.clear();
+      navigate("/nyraa/login");
     }
-    setShowConfirmModal(false)
-  }
+    setShowConfirmModal(false);
+  };
 
   const handleCancelAction = () => {
     setShowConfirmModal(false)
@@ -282,13 +279,13 @@ const Profile = () => {
         })
 
         if (profileResponse.data.success) {
-          setUser(profileResponse.data.user)
-          localStorage.setItem("userData", JSON.stringify(profileResponse.data.user))
+          dispatch(updateUser(profileResponse.data.user));
           toast.success("Avatar updated successfully!", {
             position: "top-right",
             autoClose: 3000,
-          })
+          });
         }
+
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Error uploading avatar", {
@@ -345,6 +342,7 @@ const Profile = () => {
                   className="avatar-img"
                   onError={handleAvatarError}
                 />
+
               ) : (
                 <UserIcon />
               )}

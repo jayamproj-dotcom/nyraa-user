@@ -1,20 +1,23 @@
-import { Navigate } from "react-router-dom"
+import { Navigate, useLocation } from "react-router-dom"
+import { useSelector } from "react-redux"
 
 const PrivateRoute = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem("token")
-  const userData = JSON.parse(localStorage.getItem("userData") || "{}")
+  const location = useLocation()
+  const { isLoggedIn, user } = useSelector((state) => state.auth)
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+  // 🔐 Not logged in
+  if (!isLoggedIn) {
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  // Check if profile is complete for cart/checkout access
-  const isProfileComplete =
-    userData.name && userData.name.trim() !== "" && userData.phone && userData.phone.trim() !== ""
+  // 👤 Profile completeness
+  const isProfileComplete = user?.name?.trim() && user?.phone?.trim()
 
-  // If accessing cart or checkout and profile is incomplete, redirect to profile
-  const currentPath = window.location.pathname
-  if ((currentPath.includes("/cart") || currentPath.includes("/checkout")) && !isProfileComplete) {
+  // 🚫 Restrict cart / checkout if profile incomplete
+  if (
+    (location.pathname.includes("/cart") || location.pathname.includes("/checkout")) &&
+    !isProfileComplete
+  ) {
     return <Navigate to="/account/profile?complete=true" replace />
   }
 

@@ -52,6 +52,7 @@ const ProductDetail = () => {
   const [filteredColors, setFilteredColors] = useState([]);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const isVariantOutOfStock = !selectedVariant || Number(selectedVariant.quantity) === 0;
+  const {isLoggedIn} = useSelector((state) => state.auth);
 
 
   useEffect(() => {
@@ -232,19 +233,35 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
+    if (!isLoggedIn) {
+      toast.info("Please login to add items to cart", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      navigate("/login");
+      return;
+    }
 
-    // Prepare payload to send to backend
+    if (!selectedVariant) {
+      toast.error("Please select size and color");
+      return;
+    }
+
+    // ✅ take image directly from selected variant
+    const productImage =
+      selectedVariant.images?.[0] || product.image || "/placeholder.svg";
+
     const addCartItem = {
-      productId: product.id,      // Product ID from your product object
-      quantity: quantity,          // Quantity selected
-      size: selectedSize,          // Selected size
-      color: selectedColor,        // Selected color
-      price: selectedVariant.price,        // Optional: pass price
+      productId: product.id,
+      quantity,
+      size: selectedVariant.size,
+      color: selectedVariant.color,
+      price: Number(selectedVariant.price),
+      image: productImage, // ⭐ STORE IMAGE IN CART
     };
 
-    // Dispatch the async thunk to add item to backend cart
     dispatch(addItemToCart(addCartItem))
-      .unwrap() // allows error handling
+      .unwrap()
       .then(() => {
         toast.success("Item added to cart successfully", {
           position: "top-right",
@@ -259,6 +276,7 @@ const ProductDetail = () => {
       });
   };
 
+
   const handleBuyNow = () => {
 
     console.log("selectedVariant :" + selectedVariant);
@@ -267,16 +285,6 @@ const ProductDetail = () => {
       toast.error("Please select a color and size");
       return;
     }
-
-    // dispatch(
-    //   addToCart({
-    //     ...product,
-    //     price: Number(selectedVariant.price), // Keep price as number
-    //     quantity,
-    //     color: selectedColor,
-    //     size: selectedSize,
-    //   })
-    // );
 
     dispatch(
       setBuyProduct({
@@ -488,6 +496,29 @@ const handleMouseMove = (e) => {
 
   const isInStock = product?.availability?.toLowerCase() === "in_stock";
 
+  const getPriceDetails = (product, selectedVariant) => {
+    const price = selectedVariant?.price ?? product.price ?? 0;
+    const originalPrice =
+      selectedVariant?.originalPrice ?? product.originalPrice ?? 0;
+
+    const hasDiscount = originalPrice > price;
+
+    const discountPercent = hasDiscount
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : 0;
+
+    return {
+      price,
+      originalPrice,
+      hasDiscount,
+      discountPercent,
+    };
+  };
+
+  const { price, originalPrice, hasDiscount, discountPercent } =
+    getPriceDetails(product, selectedVariant);
+
+
 
   return (
     <>
@@ -600,21 +631,17 @@ const handleMouseMove = (e) => {
                 </div>
                 <hr className="my-2" />
                 <div className="product-price mb-3">
-                  <span className="current-price">
-                    ₹
-                    {selectedVariant
-                      ? selectedVariant.price.toFixed(2)        // size + color based price
-                      : product.price.toFixed(2)}              
-                  </span>
+                  <span className="current-price">₹{price.toFixed(2)}</span>
 
-                  {product.discount > 0 && (
+                  {hasDiscount && (
                     <>
-                      <span className="original-price">₹{product.originalPrice.toFixed(2)}</span>
-                      <span className="discount">-{product.discount}%</span>
+                      <span className="original-price">₹{originalPrice.toFixed(2)}</span>
+                      <span className="discount">-{discountPercent}%</span>
                     </>
                   )}
                 </div>
-                <div className="availability mb-3">
+
+                {/* <div className="availability mb-3">
                   <span className="d-flex align-items-center">
                     Availability:
                     <span className="ms-2 d-flex align-items-center">
@@ -625,7 +652,7 @@ const handleMouseMove = (e) => {
                       {product.availability === "in_stock" ? "In Stock" : "Out of Stock"}
                     </span>
                   </span>
-                </div>
+                </div> */}
                 <div className="color-selection mb-3">
                   <div className="mb-2">Color: {selectedColor}</div>
                   <div className="d-flex gap-2">

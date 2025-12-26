@@ -5,9 +5,15 @@ import { useNavigate } from "react-router-dom"
 import { User, Mail, LogIn, AlertCircle, CheckCircle } from "lucide-react"
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google"
 import axios from "axios"
+import { useDispatch, useSelector } from "react-redux"
+import { loginSuccess, updateUser } from "../store/authSlice"
 import "../styles/Login.css"
 
 const Login = () => {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const { token } = useSelector((state) => state.auth)
+
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [name, setName] = useState("")
@@ -19,7 +25,7 @@ const Login = () => {
   const [otpSent, setOtpSent] = useState(false)
   const [showProfileForm, setShowProfileForm] = useState(false)
   const [countdown, setCountdown] = useState(0)
-  const navigate = useNavigate()
+  
 
   useEffect(() => {
     let timer
@@ -34,71 +40,50 @@ const Login = () => {
     setSuccess("")
   }
 
+  // ---------------- SEND OTP ----------------
   const handleSendOtp = async (e) => {
     e.preventDefault()
     clearMessages()
     setIsLoading(true)
 
-    if (!email) {
-      setError("Please enter your email")
-      setIsLoading(false)
-      return
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/send-otp", {
+      const res = await axios.post("http://localhost:5000/api/auth/send-otp", {
         email: email.toLowerCase().trim(),
       })
 
-      if (response.data.success) {
+      if (res.data.success) {
         setOtpSent(true)
         setSuccess("OTP sent to your email successfully!")
         setCountdown(60)
       }
-    } catch (error) {
-      console.error("Send OTP error:", error)
-      setError(error.response?.data?.message || "Failed to send OTP. Please try again.")
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send OTP")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // ---------------- VERIFY OTP ----------------
   const handleVerifyOtp = async (e) => {
     e.preventDefault()
     clearMessages()
     setIsLoading(true)
 
-    if (!otp) {
-      setError("Please enter the OTP")
-      setIsLoading(false)
-      return
-    }
-
-    if (otp.length !== 6) {
-      setError("OTP must be 6 digits")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/verify-otp", {
+      const res = await axios.post("http://localhost:5000/api/auth/verify-otp", {
         email: email.toLowerCase().trim(),
         otp: otp.trim(),
       })
 
-      if (response.data.success) {
-        localStorage.setItem("token", response.data.token)
-        localStorage.setItem("userData", JSON.stringify(response.data.user))
-        localStorage.setItem("isLoggedIn", "true")
+      if (res.data.success) {
+        dispatch(
+          loginSuccess({
+            token: res.data.token,
+            user: res.data.user,
+          })
+        )
 
-        if (!response.data.user.profileComplete) {
+        if (!res.data.user.profileComplete) {
           setShowProfileForm(true)
           setSuccess("OTP verified! Please complete your profile.")
         } else {
@@ -106,34 +91,21 @@ const Login = () => {
           setTimeout(() => navigate("/"), 1500)
         }
       }
-    } catch (error) {
-      console.error("Verify OTP error:", error)
-      setError(error.response?.data?.message || "Failed to verify OTP. Please try again.")
+    } catch (err) {
+      setError(err.response?.data?.message || "OTP verification failed")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // ---------------- COMPLETE PROFILE ----------------
   const handleCompleteProfile = async (e) => {
     e.preventDefault()
     clearMessages()
     setIsLoading(true)
 
-    if (!name.trim() || !phone.trim()) {
-      setError("Please fill in both name and phone number")
-      setIsLoading(false)
-      return
-    }
-
-    if (phone.length < 10) {
-      setError("Phone number must be at least 10 digits")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      const token = localStorage.getItem("token")
-      const response = await axios.put(
+      const res = await axios.put(
         "http://localhost:5000/api/auth/profile",
         {
           name: name.trim(),
@@ -141,77 +113,73 @@ const Login = () => {
         },
         {
           headers: { Authorization: `Bearer ${token}` },
-        },
+        }
       )
 
-      if (response.data.success) {
-        localStorage.setItem("userData", JSON.stringify(response.data.user))
+      if (res.data.success) {
+        dispatch(updateUser(res.data.user))
         setSuccess("Profile completed successfully! Redirecting...")
         setTimeout(() => navigate("/"), 1500)
       }
-    } catch (error) {
-      console.error("Complete profile error:", error)
-      setError(error.response?.data?.message || "Failed to complete profile. Please try again.")
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to complete profile")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // ---------------- GOOGLE LOGIN ----------------
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       clearMessages()
       setIsLoading(true)
 
-      const response = await axios.post("http://localhost:5000/api/auth/google", {
+      const res = await axios.post("http://localhost:5000/api/auth/google", {
         token: credentialResponse.credential,
       })
 
-      if (response.data.success) {
-        localStorage.setItem("token", response.data.token)
-        localStorage.setItem("userData", JSON.stringify(response.data.user))
-        localStorage.setItem("isLoggedIn", "true")
+      if (res.data.success) {
+        dispatch(
+          loginSuccess({
+            token: res.data.token,
+            user: res.data.user,
+          })
+        )
 
         setSuccess("Google login successful! Redirecting...")
         setTimeout(
           () =>
             navigate(
-              response.data.isNewUser || !response.data.user.profileComplete ? "/account/profile?complete=true" : "/",
+              res.data.isNewUser || !res.data.user.profileComplete
+                ? "/account/profile?complete=true"
+                : "/"
             ),
-          1500,
+          1500
         )
       }
-    } catch (error) {
-      console.error("Google login error:", error)
-      setError(error.response?.data?.message || "Google login failed. Please try again.")
+    } catch {
+      setError("Google login failed")
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleGoogleError = () => {
-    console.error("Google login failed")
     setError("Google login failed. Please try again.")
   }
 
   const handleResendOtp = async () => {
     if (countdown > 0) return
-
-    clearMessages()
-    setIsLoading(true)
-
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/send-otp", {
+      const res = await axios.post("http://localhost:5000/api/auth/send-otp", {
         email: email.toLowerCase().trim(),
       })
-
-      if (response.data.success) {
-        setSuccess("New OTP sent to your email!")
+      if (res.data.success) {
+        setSuccess("New OTP sent!")
         setCountdown(60)
       }
-    } catch (error) {
-      setError(error.response?.data?.message || "Failed to resend OTP")
-    } finally {
-      setIsLoading(false)
+    } catch {
+      setError("Failed to resend OTP")
     }
   }
 
@@ -225,12 +193,6 @@ const Login = () => {
     setName("")
     setPhone("")
   }
-
-  useEffect(() => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("userData")
-    localStorage.removeItem("isLoggedIn")
-  }, [])
 
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>

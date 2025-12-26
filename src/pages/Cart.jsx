@@ -91,38 +91,13 @@ const Cart = () => {
             // ✅ HARD GUARD
             if (!item.product) return null;
 
-            // ⭐ FIX VARIANT IMAGE
-            let productImage = null;
-
-            try {
-              const variants =
-                typeof item.product.variants === "string"
-                  ? JSON.parse(item.product.variants)
-                  : item.product.variants || [];
-
-              // ✅ find correct variant by color + size
-              const matchedVariantIndex = variants.findIndex(
-                (v) => v.color === item.color && v.size === item.size
-              );
-
-              if (matchedVariantIndex !== -1) {
-                const matchedVariant = variants[matchedVariantIndex];
-
-                if (Array.isArray(matchedVariant.images) && matchedVariant.images.length > 0) {
-                  productImage = `http://localhost:5000/${matchedVariant.images[0]}`;
-                }
-              }
-            } catch (error) {
-              console.error("Variant image error:", error);
-            }
-
             return (
               <div key={item.id} className="row cart-item align-items-center py-2">
 
                 {/* Product column */}
                 <div className="col-7 col-md-6 d-flex align-items-center">
                   <img
-                    src={productImage || "https://via.placeholder.com/60"}
+                    src={item.image || "https://via.placeholder.com/60"}
                     alt={item.product?.name || "Product"}
                     className="cart-item-image"
                   />

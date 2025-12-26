@@ -319,11 +319,13 @@
 
 /* ✅ Available */
 .stock-indicator.green {
+  margin-left: 5px;
   background-color: #4caf50;
 }
 
 /* ❌ Not available */
 .stock-indicator.red {
+  margin-left: 5px;
   background-color: #ff4a3d;
 }
 

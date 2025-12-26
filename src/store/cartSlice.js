@@ -30,6 +30,9 @@ export const fetchCart = createAsyncThunk("cart/fetchCart", async () => {
 export const addItemToCart = createAsyncThunk(
   "cart/addItemToCart",
   async (product) => {
+
+    console.log(" product in cartSlice:", product);
+    
     const response = await api.post("/api/cart", product);
     return response.data.item; // the added/updated item
   }

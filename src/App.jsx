@@ -25,7 +25,7 @@ import PrivateRoute from "./components/routes/PrivateRoute";
 import ErrorBoundary from "./components/error/ErrorBoundary";
 
 function App() {
-  const isAuthenticated = !!localStorage.getItem("token");
+  const isAuthenticated = !localStorage.getItem("token");
 
   return (
     <ErrorBoundary>
